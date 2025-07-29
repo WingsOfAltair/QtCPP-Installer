@@ -1,6 +1,5 @@
-<!-- resources.qrc -->
 <RCC>
     <qresource prefix="/">
-        <file>data/data.7z</file>
+        <file>data/Qt6CPP-App.7z</file>
     </qresource>
 </RCC>
