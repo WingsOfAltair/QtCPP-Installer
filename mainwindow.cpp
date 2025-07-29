@@ -14,6 +14,7 @@
 bool quitApp = false;
 
 void MainWindow::extractResourceArchive(const QString& resourcePath, const QString& outputDir, const QString& password) {
+    QString archivePath = "Qt6CPP-App.7z";
     QtConcurrent::run([=]() {
         if (ui->tabWidget->currentIndex() == 3)
         {
@@ -21,7 +22,7 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
             ui->backButton->setDisabled(true);
         }
 
-        QFile resourceFile(resourcePath);
+        /*QFile resourceFile(resourcePath);
         if (!resourceFile.open(QIODevice::ReadOnly)) {
             qWarning() << "Failed to open resource:" << resourcePath;
             return;
@@ -37,7 +38,7 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
             return;
         }
         tempFile.write(archiveData);
-        tempFile.close();
+        tempFile.close();*/
 
         try {
             bit7z::Bit7zLibrary lib("7z.dll");
@@ -47,34 +48,55 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
                 extractor.setPassword(password.toStdString());
             }
 
-            bit7z::BitInputArchive archive(extractor, tempPath.toStdString());
+            //bit7z::BitInputArchive archive(extractor, tempPath.toStdString());
+            bit7z::BitInputArchive archive(extractor, archivePath.toStdString());
             uint64_t totalSize = 0;
             for (const auto& item : archive) {
                 totalSize += item.size();
             }
 
-            extractor.setProgressCallback([this, totalSize](uint64_t processedSize) -> bool {
+            QElapsedTimer timer;
+            timer.start();
+
+            extractor.setProgressCallback([this, totalSize, timer](uint64_t processedSize) -> bool {
                 int percent = totalSize > 0 ? static_cast<int>((processedSize * 100) / totalSize) : 0;
-                QMetaObject::invokeMethod(this, [this, percent]() {
+
+                // Calculate time remaining
+                qint64 elapsedMs = timer.elapsed();
+                double elapsedSec = elapsedMs / 1000.0;
+                QString remainingText = "Calculating...";
+                if (elapsedSec > 0 && processedSize > 0) {
+                    double speed = processedSize / elapsedSec; // bytes/sec
+                    double remainingSec = (totalSize - processedSize) / speed;
+                    int minutes = static_cast<int>(remainingSec) / 60;
+                    int seconds = static_cast<int>(remainingSec) % 60;
+                    remainingText = QString("Estimated Time Remaining: %1:%2")
+                                        .arg(minutes, 2, 10, QLatin1Char('0'))
+                                        .arg(seconds, 2, 10, QLatin1Char('0'));
+                }
+
+                QMetaObject::invokeMethod(this, [this, percent, remainingText]() {
                     ui->progressBar->setValue(percent);
+                    ui->labelTime->setText(remainingText);
                 }, Qt::QueuedConnection);
                 return true; // continue extraction
             });
 
             QDir().mkpath(outputDir);
-            extractor.extract(tempPath.toStdString(), outputDir.toStdString());
+            extractor.extract(archivePath.toStdString(), outputDir.toStdString());
 
             QMetaObject::invokeMethod(this, [this]() {
                 qDebug() << "Extraction completed!";
                 ui->nextButton->setDisabled(false);
                 ui->backButton->setDisabled(true);
+                ui->labelTime->setText("Installation completed.");
             }, Qt::QueuedConnection);
 
         } catch (const bit7z::BitException& e) {
             qWarning() << "Extraction failed:" << QString::fromStdString(e.what());
         }
 
-        QFile::remove(tempPath);
+        //QFile::remove(archivePath);
     });
 }
 

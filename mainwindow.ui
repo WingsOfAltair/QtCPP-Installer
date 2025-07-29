@@ -109,6 +109,19 @@ li.checked::marker { content: &quot;\2612&quot;; }
           <number>0</number>
          </property>
         </widget>
+        <widget class="QLabel" name="labelTime">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>250</y>
+           <width>771</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
        </widget>
        <widget class="QWidget" name="Finish">
         <attribute name="title">

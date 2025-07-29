@@ -85,3 +85,25 @@ install(TARGETS QtCPP-Installer
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(QtCPP-Installer)
 endif()
+
+# Path to your source data folder
+set(DATA_DIR "${CMAKE_SOURCE_DIR}/resources/data")
+
+# Destination: inside build's runtime folder (debug/release)
+set(DATA_DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
+
+# Copy the entire data folder after build
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${DATA_DIR}"
+        "${DATA_DESTINATION}/"
+    COMMENT "Copying data folder to ${DATA_DESTINATION}/"
+)
+
+# Copy 7z.dll after build
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "C:/Program Files/7-Zip/7z.dll"
+        "${DATA_DESTINATION}/7z.dll"
+    COMMENT "Copying 7z.dll to ${DATA_DESTINATION}/"
+)
