@@ -1,0 +1,6 @@
+<!-- resources.qrc -->
+<RCC>
+    <qresource prefix="/">
+        <file>data/data.7z</file>
+    </qresource>
+</RCC>
