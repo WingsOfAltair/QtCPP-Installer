@@ -88,7 +88,7 @@ QString MainWindow::extractEmbeddedDll() {
 }
 
 void MainWindow::extractResourceArchive(const QString& resourcePath, const QString& outputDir, const QString& password) {
-    QString archivePath = "Qt6CPP-App.bin";
+    QString archivePath = "Data.bin";
 
     QString dllPath = extractEmbeddedDll();
     if (dllPath.isEmpty()) {
@@ -199,10 +199,10 @@ void MainWindow::NextStep()
         ui->backButton->setDisabled(true);
         QString outputDir = ui->txtInstallationPath->toPlainText();
         QDir dir(outputDir);
-        dir.cdUp();  // Goes one level up (removes the last folder)
+        //dir.cdUp();  // Goes one level up (removes the last folder)
 
         QString parentPath = dir.absolutePath();  // This is the path without the last folder
-        extractResourceArchive(":/data/Qt6CPP-App.7z", parentPath, "bashar");
+        extractResourceArchive(":/data/Data.bin", parentPath, "bashar");
     }
     if (ui->tabWidget->currentIndex() == 3 && !quitApp)
     {
@@ -214,7 +214,20 @@ void MainWindow::NextStep()
     }
     if (ui->tabWidget->currentIndex() == 3 && quitApp)
     {
-        QApplication::quit();
+        if (!ui->cbLaunch->isChecked())
+        {
+            QApplication::quit();
+        }
+        else {
+            QString exePath = QDir::cleanPath(ui->txtInstallationPath->toPlainText() + "/ScrutaNet-Server-GUI.exe");
+
+            bool started = QProcess::startDetached(exePath, {}, ui->txtInstallationPath->toPlainText());
+
+            if (!started) {
+                qDebug() << "Failed to start:" << exePath;
+            }
+            QApplication::quit();
+        }
     }
 }
 
