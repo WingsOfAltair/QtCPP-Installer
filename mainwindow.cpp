@@ -88,7 +88,7 @@ QString MainWindow::extractEmbeddedDll() {
 }
 
 void MainWindow::extractResourceArchive(const QString& resourcePath, const QString& outputDir, const QString& password) {
-    QString archivePath = "Data.bin";
+    QString archivePath = getExeFolder() + "/Data.bin";
 
     QString dllPath = extractEmbeddedDll();
     if (dllPath.isEmpty()) {
