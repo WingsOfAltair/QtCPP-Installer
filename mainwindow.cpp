@@ -236,7 +236,6 @@ void MainWindow::NextStep()
     }
 }
 
-
 void MainWindow::BackStep()
 {
     ui->tabWidget->setCurrentIndex(ui->tabWidget->currentIndex() - 1);
@@ -258,7 +257,7 @@ void MainWindow::onStartClicked() {
         QMessageBox::StandardButton ans = QMessageBox::question(
             this,
             "Resume Download",
-            "A partial download was found.\nDo you want to resume. Choose No if you want to start fresh?",
+            "A partial download was found.\nDo you want to resume? Choose No if you want to start fresh.",
             QMessageBox::Yes | QMessageBox::No,
             QMessageBox::Yes
             );
@@ -271,46 +270,38 @@ void MainWindow::onStartClicked() {
     }
 
     manager = new DownloadManager(url, file);
-    managerThread = new QThread(this);  // Parent to MainWindow for safety
+    managerThread = new QThread(this);  // parented to MainWindow
 
-    // Move manager to thread
     manager->moveToThread(managerThread);
 
-    // When thread starts, call start() in manager
     connect(managerThread, &QThread::started, manager, &DownloadManager::start);
 
-    // Cleanup when finished
     connect(manager, &DownloadManager::finished, this, [=]() {
         QMessageBox::information(this, "Done", "Download complete!");
         ui->retryLabel->clear();
         managerThread->quit();
     });
 
-    connect(manager, &DownloadManager::finished, this, [this]() {
-        ui->retryLabel->clear();
-        managerThread->quit();
+    connect(manager, &DownloadManager::error, this, [=](const QString &msg) {
+        QMessageBox::critical(this, "Error", msg);
     });
 
-    connect(managerThread, &QThread::finished, this, [this]() {
-        managerThread->deleteLater();
-        manager->deleteLater();
-        manager = nullptr;
-    });
+    /*connect(manager, &DownloadManager::retryStatus, this, [=](int segmentIndex, int attempt) {
+        ui->retryLabel->setText(QString("Retrying segment %1 (Attempt %2)...").arg(segmentIndex).arg(attempt));
+    });*/
 
-    // UI updates
-    connect(manager, &DownloadManager::progress, this, [this](qint64 downloaded, qint64 total, double speedMBps, int eta) {
-        ui->progressBarDownload->setValue((int)((downloaded * 100) / total));
+    connect(manager, &DownloadManager::progress, this, [=](qint64 downloaded, qint64 total, double speedMBps, int eta) {
+        ui->progressBarDownload->setValue(total > 0 ? static_cast<int>((downloaded * 100) / total) : 0);
         ui->etaLabel->setText(QString("ETA: %1 sec").arg(eta));
         ui->speedLabel->setText(QString("Speed: %1 MB/s").arg(speedMBps, 0, 'f', 2));
         ui->sizeLabel->setText(QString("%1 / %2").arg(humanSize(downloaded)).arg(humanSize(total)));
     });
 
-    connect(manager, &DownloadManager::error, this, [=](const QString &msg) {
-        QMessageBox::critical(this, "Error", msg);
-    });
-
-    connect(manager, &DownloadManager::retryStatus, this, [=](int segmentIndex, int attempt) {
-        ui->retryLabel->setText(QString("Retrying segment %1 (Attempt %2)...").arg(segmentIndex).arg(attempt));
+    connect(managerThread, &QThread::finished, this, [=]() {
+        manager->deleteLater();
+        managerThread->deleteLater();
+        manager = nullptr;
+        managerThread = nullptr;
     });
 
     managerThread->start();
@@ -331,7 +322,8 @@ void MainWindow::onPauseClicked() {
 
 void MainWindow::onCancelClicked() {
     if (!manager) return;
-    manager->cancel(); // signal to worker
+    manager->cancel();
+
     ui->retryLabel->clear();
     ui->progressBarDownload->setValue(0);
     ui->etaLabel->setText("ETA: 0 sec");

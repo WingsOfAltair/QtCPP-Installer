@@ -1,100 +1,128 @@
 #include "segmentdownloader.h"
-#include <QFile>
-#include <QThread>
-#include <QDebug>
+#include <QNetworkRequest>
 
-SegmentDownloader::SegmentDownloader(const QString &url, const QString &filePart, qint64 start, qint64 end)
-    : m_url(url), m_filePart(filePart), m_start(start), m_end(end),
-    m_curl(nullptr), m_file(nullptr), m_paused(false), m_stopRequested(false),
-    m_downloaded(0), m_retryCount(3), m_retryDelay(1000) // 3 retries, 1s base delay
+SegmentDownloader::SegmentDownloader(const QString &url, const QString &outputFile, qint64 start, qint64 end, QObject *parent)
+    : QObject(parent),
+    m_url(url),
+    m_outputFile(outputFile),
+    m_startPos(start),
+    m_endPos(end),
+    m_manager(new QNetworkAccessManager(this))
 {
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+    m_file = new QFile(m_outputFile);
+    if (!m_file->open(QIODevice::ReadWrite | QIODevice::Unbuffered)) {
+        emit error(QString("Failed to open file: %1").arg(m_outputFile));
+        return;
+    }
+    if (!m_file->seek(m_startPos)) {
+        emit error(QString("Failed to seek in file: %1").arg(m_outputFile));
+        return;
+    }
 }
 
-SegmentDownloader::~SegmentDownloader() {
-    curl_global_cleanup();
+SegmentDownloader::~SegmentDownloader()
+{
+    if (m_reply) {
+        m_reply->deleteLater();
+    }
+    if (m_file) {
+        m_file->close();
+        delete m_file;
+    }
 }
 
-void SegmentDownloader::start() {
-    m_file = fopen(m_filePart.toStdString().c_str(), "ab+");
-    if (!m_file) {
-        emit error("Cannot open file: " + m_filePart);
-        emit finished();
+void SegmentDownloader::start()
+{
+    if (m_complete || m_stopped) return;
+
+    QNetworkRequest request{QUrl(m_url)};
+    QByteArray rangeHeader = "bytes=" + QByteArray::number(m_startPos + m_bytesReceived) + "-" + QByteArray::number(m_endPos);
+    request.setRawHeader("Range", rangeHeader);
+
+    m_reply = m_manager->get(request);
+
+    connect(m_reply, &QNetworkReply::readyRead, this, &SegmentDownloader::onReadyRead);
+    connect(m_reply, &QNetworkReply::downloadProgress, this, [this](qint64 received, qint64 total) {
+        Q_UNUSED(total);
+        m_bytesReceived = received;
+        emit progress(m_bytesReceived, m_endPos - m_startPos + 1);
+    });
+    connect(m_reply, &QNetworkReply::finished, this, &SegmentDownloader::onFinished);
+    connect(m_reply, QOverload<QNetworkReply::NetworkError>::of(&QNetworkReply::errorOccurred),
+            this, &SegmentDownloader::onErrorOccurred);
+}
+
+void SegmentDownloader::pause()
+{
+    if (m_reply && !m_paused) {
+        m_paused = true;
+        disconnect(m_reply, &QNetworkReply::readyRead, this, &SegmentDownloader::onReadyRead);
+        disconnect(m_reply, &QNetworkReply::finished, this, &SegmentDownloader::onFinished);
+        disconnect(m_reply, QOverload<QNetworkReply::NetworkError>::of(&QNetworkReply::errorOccurred),
+                   this, &SegmentDownloader::onErrorOccurred);
+        m_reply->abort();
+        m_reply->deleteLater();
+        m_reply = nullptr;
+    }
+}
+
+void SegmentDownloader::resume()
+{
+    if (m_paused) {
+        m_paused = false;
+        start();
+    }
+}
+
+void SegmentDownloader::stop()
+{
+    m_stopped = true;
+    if (m_reply) {
+        m_reply->abort();
+        m_reply->deleteLater();
+        m_reply = nullptr;
+    }
+    if (m_file) {
+        m_file->close();
+    }
+}
+
+void SegmentDownloader::onReadyRead() {
+    if (!m_file) return;
+
+    QByteArray data = m_reply->readAll();
+    qint64 written = m_file->write(data);
+    if (written != data.size()) {
+        emit error(QString("Failed to write to file segment: %1").arg(m_outputFile));
+        m_reply->abort();
         return;
     }
 
-    fseek(m_file, 0, SEEK_END);
-    qint64 existing = ftell(m_file);
-    qint64 resumeFrom = m_start + existing;
+    m_bytesReceived += written;
 
-    if (resumeFrom >= m_end) {
-        fclose(m_file);
+    qDebug() << "Segment" << index << "received" << m_bytesReceived << "bytes";
+
+    emit progress(m_bytesReceived, m_endPos - m_startPos + 1);
+}
+
+void SegmentDownloader::onFinished()
+{
+    if (!m_reply) return;
+
+    if (m_reply->error() == QNetworkReply::NoError) {
+        m_complete = true;
+        m_file->flush();
+        m_file->close();
         emit finished();
-        return;
+    } else {
+        emit error(QString("Download failed: %1").arg(m_reply->errorString()));
     }
-
-    bool success = false;
-
-    for (int attempt = 0; attempt < m_retryCount && !m_stopRequested; ++attempt) {
-        m_curl = curl_easy_init();
-        if (!m_curl) {
-            emit error("Failed to init CURL");
-            break;
-        }
-
-        curl_easy_setopt(m_curl, CURLOPT_URL, m_url.toStdString().c_str());
-        curl_easy_setopt(m_curl, CURLOPT_WRITEDATA, m_file);
-        curl_easy_setopt(m_curl, CURLOPT_NOPROGRESS, 0L);
-        curl_easy_setopt(m_curl, CURLOPT_XFERINFOFUNCTION, progressCallback);
-        curl_easy_setopt(m_curl, CURLOPT_XFERINFODATA, this);
-
-        QString range = QString("%1-%2").arg(resumeFrom).arg(m_end);
-        curl_easy_setopt(m_curl, CURLOPT_RANGE, range.toStdString().c_str());
-
-        CURLcode res = curl_easy_perform(m_curl);
-
-        if (res == CURLE_OK) {
-            success = true;
-            curl_easy_cleanup(m_curl);
-            break;
-        } else {
-            qWarning() << "Segment" << m_filePart << "retry" << (attempt + 1)
-            << "failed:" << curl_easy_strerror(res);
-            curl_easy_cleanup(m_curl);
-            if (attempt < m_retryCount - 1) {
-                int delay = m_retryDelay * (1 << attempt); // exponential backoff
-                QThread::msleep(delay);
-            }
-        }
-    }
-
-    fclose(m_file);
-
-    if (!success && !m_stopRequested) {
-        emit error(QString("Segment %1 failed after %2 retries").arg(m_filePart).arg(m_retryCount));
-    }
-
-    emit finished();
+    m_reply->deleteLater();
+    m_reply = nullptr;
 }
 
-void SegmentDownloader::pause() {
-    if (m_curl) curl_easy_pause(m_curl, CURLPAUSE_ALL);
-    m_paused = true;
-}
-
-void SegmentDownloader::resume() {
-    if (m_curl) curl_easy_pause(m_curl, CURLPAUSE_CONT);
-    m_paused = false;
-}
-
-void SegmentDownloader::stop() {
-    m_stopRequested = true;
-    if (m_curl) curl_easy_pause(m_curl, CURLPAUSE_ALL);
-}
-
-int SegmentDownloader::progressCallback(void *clientp, curl_off_t, curl_off_t dlnow, curl_off_t, curl_off_t) {
-    auto *self = static_cast<SegmentDownloader *>(clientp);
-    if (self->m_stopRequested) return 1; // abort
-    emit self->progress(dlnow);
-    return 0;
+void SegmentDownloader::onErrorOccurred(QNetworkReply::NetworkError code) {
+    Q_UNUSED(code);
+    qDebug() << "Segment" << index << "network error:" << m_reply->errorString();
+    emit error(QString("Network error: %1").arg(m_reply->errorString()));
 }
