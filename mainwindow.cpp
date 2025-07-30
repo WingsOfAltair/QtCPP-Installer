@@ -22,6 +22,10 @@ std::atomic<bool> m_cancelExtraction {false};
 QFuture<void> m_extractionFuture;
 qint64 totalFileSize;
 
+DownloadManager *manager;
+DownloadControlFlags *m_controlFlags;
+QThread *workerThread;
+
 void MainWindow::closeEvent(QCloseEvent* event) {
     if (m_extractionFuture.isRunning()) {
         qDebug() << "App closing: cancelling extraction...";
@@ -148,8 +152,8 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
             extractor.setProgressCallback([this, totalSize, timer](uint64_t processedSize) -> bool {
                 if (m_cancelExtraction.load(std::memory_order_relaxed)) {
                     qDebug() << "Extraction canceled by user.";
-                    //QFile::remove(archivePath);
-                    QFile::remove("7z.dll");
+                    //(archivePath);
+                    ("7z.dll");
                     return false; // Stops extraction
                 }
                 int percent = totalSize > 0 ? static_cast<int>((processedSize * 100) / totalSize) : 0;
@@ -190,8 +194,8 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
             qWarning() << "Extraction failed:" << QString::fromStdString(e.what());
         }
 
-        //QFile::remove(archivePath);
-        QFile::remove(dllPath);
+        //(archivePath);
+        (dllPath);
     });
     m_extractionWatcher.setFuture(m_extractionFuture);
 }
@@ -272,21 +276,27 @@ void MainWindow::onStartClicked() {
         return;
     }
 
-    // If file exists, prompt
-    if (QFileInfo::exists(file)) {
-        auto ans = QMessageBox::question(this, "Resume Download?",
-                                         "File already exists. Resume download?",
-                                         QMessageBox::Yes | QMessageBox::No);
+    if (QFile::exists(file + ".meta")) {
+        QMessageBox::StandardButton ans = QMessageBox::question(this, "Resume?", "Resume previous download?");
         if (ans == QMessageBox::No) {
-            QFile::remove(file);
+            (file + ".meta");
+            (file);
         }
     }
 
-    manager = new DownloadManager(url, file);
-    workerThread = new QThread(this);
-    manager->moveToThread(workerThread);
+    auto controlFlags = new DownloadControlFlags();
+    if (m_controlFlags)
+        delete m_controlFlags;
 
+    m_controlFlags = new DownloadControlFlags();
+    manager = new DownloadManager(url, file, m_controlFlags);
+
+    workerThread = new QThread;
+
+    manager->moveToThread(workerThread);
     connect(workerThread, &QThread::started, manager, &DownloadManager::start);
+    connect(workerThread, &QThread::finished, manager, &QObject::deleteLater);
+    connect(workerThread, &QThread::finished, workerThread, &QObject::deleteLater);
     connect(manager, &DownloadManager::finished, this, [=]() {
         ui->progressBarDownload->setValue(100);
         ui->retryLabel->setText("");
@@ -298,26 +308,29 @@ void MainWindow::onStartClicked() {
         ui->cancelButton->setDisabled(true);
         ui->nextButton->setDisabled(false);
         workerThread->quit();
+        workerThread->wait();
     });
     connect(manager, &DownloadManager::error, this, [=](const QString &msg) {
-        QMessageBox::critical(this, "Error", msg);
+        if (m_controlFlags) {
+            delete m_controlFlags;
+            m_controlFlags = nullptr;
+        }
         workerThread->quit();
-    });
-    connect(workerThread, &QThread::finished, this, [=]() {
-        manager->deleteLater();
-        workerThread->deleteLater();
+        workerThread->wait();
+
         manager = nullptr;
         workerThread = nullptr;
+
+        QApplication::quit();
     });
 
-    connect(manager, &DownloadManager::progress, this,
-            [=](qint64 downloaded, qint64 total, double speedMBps, int eta) {
+    connect(manager, &DownloadManager::progress, this, [this](qint64 downloaded, qint64 total, double speed, int eta) {
                 int percent = (total > 0) ? static_cast<int>((downloaded * 100) / total) : 0;
                 ui->progressBarDownload->setValue(percent);
                 ui->sizeLabel->setText(QString("%1 / %2")
                                            .arg(humanSize(downloaded))
                                            .arg(humanSize(total)));
-                ui->speedLabel->setText(QString("Speed: %1 MB/s").arg(speedMBps, 0, 'f', 2));
+                ui->speedLabel->setText(QString("Speed: %1 MB/s").arg(speed, 0, 'f', 2));
                 ui->etaLabel->setText(QString("ETA: %1 sec").arg(eta >= 0 ? eta : -1));
             });
 
@@ -338,6 +351,13 @@ QString MainWindow::humanSize(qint64 bytes) {
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
+
+    setWindowFlags(windowFlags() & ~Qt::WindowCloseButtonHint);
+
+    DownloadControlFlags *m_controlFlags = nullptr;
+    DownloadManager *manager = nullptr;
+    QThread *workerThread = nullptr;
+
     ui->tabWidget->tabBar()->hide();
     ui->progressBar->setRange(0, 100);
     ui->progressBarDownload->setRange(0, 100);
@@ -354,30 +374,31 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::onPauseClicked() {
     if (isPaused) {
-        if (manager) manager->resume();
+        if (m_controlFlags)
+            m_controlFlags->paused.store(false);
         ui->resumeButton->setText("Pause Download");
         isPaused = false;
     } else {
-        if (manager) manager->pause();
+        if (m_controlFlags)
+            m_controlFlags->paused.store(true);
         ui->resumeButton->setText("Resume Download");
         isPaused = true;
     }
 }
 
 void MainWindow::onCancelClicked() {
-    if (manager) {
-        manager->cancel();
-        ui->cancelButton->setDisabled(true);
-        ui->resumeButton->setText("Download Canceled.");
-        ui->resumeButton->setDisabled(true);
-        ui->etaLabel->setText("Download Canceled.");
-        ui->sizeLabel->setText("");
-        ui->speedLabel->setText("");
-        ui->progressBarDownload->setValue(0);
-        workerThread->quit();
-        workerThread->wait();
-        QApplication::quit();
-    }
+    if (m_controlFlags)
+        m_controlFlags->stopped.store(true);
+
+    ui->cancelButton->setDisabled(true);
+    ui->resumeButton->setText("Download Canceled");
+    ui->resumeButton->setDisabled(true);
+    ui->etaLabel->setText("Download Canceled");
+    ui->sizeLabel->clear();
+    ui->speedLabel->clear();
+    ui->progressBarDownload->setValue(0);
+
+    QApplication::quit();
 }
 
 MainWindow::~MainWindow() {
