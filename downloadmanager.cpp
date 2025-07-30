@@ -8,6 +8,7 @@
 #include <QDebug>
 #include <curl/curl.h>
 #include <chrono>
+#include <QPointer>
 
 DownloadManager::DownloadManager(const QString &url, const QString &output)
     : m_url(url), m_output(output), m_segmentCount(4), m_totalSize(0),
@@ -17,44 +18,62 @@ DownloadManager::DownloadManager(const QString &url, const QString &output)
 }
 
 bool DownloadManager::checkServerSupport() {
+    CURLcode globalInit = curl_global_init(CURL_GLOBAL_ALL);
+    if (globalInit != CURLE_OK) {
+        return 1;
+    }
+
     CURL *curl = curl_easy_init();
-    if (!curl) return false;
+    if (!curl) {
+        curl_global_cleanup();
+        return 1;
+    }
 
     struct HeaderData {
         bool acceptRanges = false;
     } headerData;
 
-    auto headerCallback = [](char *buffer, size_t size, size_t nitems, void *userdata) -> size_t {
+    // Plain C++ header callback - no Qt types here!
+    auto headerCallback = [](char* buffer, size_t size, size_t nitems, void* userdata) -> size_t {
         size_t totalSize = size * nitems;
-        QString headerLine = QString::fromUtf8(buffer, static_cast<int>(totalSize)).trimmed();
-        if (headerLine.toLower().startsWith("accept-ranges:")) {
-            if (headerLine.toLower().contains("bytes")) {
-                static_cast<HeaderData *>(userdata)->acceptRanges = true;
+        std::string headerLine(buffer, totalSize);
+
+        // Convert header to lowercase for case-insensitive comparison
+        std::string headerLower;
+        headerLower.resize(headerLine.size());
+        std::transform(headerLine.begin(), headerLine.end(), headerLower.begin(), ::tolower);
+
+        if (headerLower.compare(0, 14, "accept-ranges:") == 0) {
+            if (headerLower.find("bytes") != std::string::npos) {
+                static_cast<HeaderData*>(userdata)->acceptRanges = true;
             }
         }
         return totalSize;
     };
 
-    curl_easy_setopt(curl, CURLOPT_URL, m_url.toStdString().c_str());
-    curl_easy_setopt(curl, CURLOPT_NOBODY, 1L); // HEAD request
-    curl_easy_setopt(curl, CURLOPT_HEADER, 1L);
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, headerCallback);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &headerData);
+    std::string urlStr = m_url.toStdString();
+    curl_easy_setopt(curl, CURLOPT_URL, urlStr.c_str());
+    curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);  // HEAD request
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L); // Uncomment for debugging
 
     CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK) {
-        emit error(QString("HEAD request failed: %1").arg(curl_easy_strerror(res)));
+        emit error(QStringLiteral("HEAD request failed: %1").arg(curl_easy_strerror(res)));
         curl_easy_cleanup(curl);
         return false;
     }
 
-    double cl = 0;
-    curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &cl);
-    m_totalSize = static_cast<qint64>(cl);
+    double contentLength = 0;
+    if(curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentLength) != CURLE_OK || contentLength < 0) {
+        contentLength = 0; // fallback if content length missing
+    }
+    m_totalSize = static_cast<qint64>(contentLength);
 
     m_supportsRange = headerData.acceptRanges;
 
     curl_easy_cleanup(curl);
+    curl_global_cleanup();
     return true;
 }
 
@@ -84,6 +103,10 @@ void DownloadManager::start() {
 }
 
 void DownloadManager::startSegment(int index, qint64 start, qint64 end) {
+    if (m_output.isEmpty()) {
+        qCritical() << "ERROR: m_output is empty! Cannot create part file names.";
+        return;
+    }
     QString partFile = QString("%1.part%2").arg(m_output).arg(index);
     auto *seg = new SegmentDownloader(m_url, partFile, start, end);
     auto *thread = new QThread();
@@ -91,19 +114,36 @@ void DownloadManager::startSegment(int index, qint64 start, qint64 end) {
 
     connect(thread, &QThread::started, seg, &SegmentDownloader::start);
 
-    connect(seg, &SegmentDownloader::progress, this, [=](qint64) {
-        m_downloaded = 0;
-        for (int j = 0; j < m_segmentCount; j++) {
-            QFile f(QString("%1.part%2").arg(m_output).arg(j));
-            if (f.exists()) m_downloaded += f.size();
+    QPointer<DownloadManager> safeThis(this);
+    connect(seg, &SegmentDownloader::progress, this, [safeThis]() {
+        if (!safeThis) return;
+
+        safeThis->m_downloaded = 0;
+        for (int j = 0; j < safeThis->m_segmentCount; j++) {
+            QString partFileName = QString("%1.part%2").arg(safeThis->m_output).arg(j);
+            QFile f(partFileName);
+            if (f.exists()) {
+                qint64 size = f.size();
+                if (size >= 0) {
+                    safeThis->m_downloaded += size;
+                } else {
+                    qWarning() << "Failed to get size of" << partFileName;
+                }
+            } else {
+                qWarning() << "File not found:" << partFileName;
+            }
         }
-        auto elapsed = std::chrono::steady_clock::now() - m_start;
+
+        auto elapsed = std::chrono::steady_clock::now() - safeThis->m_start;
         double elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() + 1;
-        double speed = m_downloaded / elapsedSec;
-        int eta = (speed > 0) ? (int)((m_totalSize - m_downloaded) / speed) : 0;
-        emit progress(m_downloaded, m_totalSize, speed / (1024 * 1024), eta);
-        saveMetadata();
+        double speed = safeThis->m_downloaded / elapsedSec;
+        int eta = (speed > 0) ? (int)((safeThis->m_totalSize - safeThis->m_downloaded) / speed) : 0;
+
+        emit safeThis->progress(safeThis->m_downloaded, safeThis->m_totalSize, speed / (1024 * 1024), eta);
+
+        safeThis->saveMetadata();
     });
+
 
     connect(seg, &SegmentDownloader::error, this, [=](const QString &msg) {
         emit error(msg);

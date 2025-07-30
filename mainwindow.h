@@ -28,7 +28,6 @@ private slots:
     void onPauseClicked();
     void onCancelClicked();
     QString extractEmbeddedDll();
-    QString extractEmbeddedCurlDLL();
     void cancelExtraction();
     void closeEvent(QCloseEvent* event);
 

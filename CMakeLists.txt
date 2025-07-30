@@ -101,15 +101,6 @@ add_custom_command(TARGET QtCPP-Installer POST_BUILD
     COMMENT "Copying zlib1.dll to build output folder"
 )
 
-
-# Copy 7z.dll
-add_custom_command(TARGET QtCPP-Installer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "C:/Program Files/7-Zip/7z.dll"
-        "$<TARGET_FILE_DIR:QtCPP-Installer>/7z.dll"
-    COMMENT "Copying 7z.dll"
-)
-
 # Copy resources/data folder
 add_custom_command(TARGET QtCPP-Installer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -117,3 +108,47 @@ add_custom_command(TARGET QtCPP-Installer POST_BUILD
         "$<TARGET_FILE_DIR:QtCPP-Installer>/data"
     COMMENT "Copying data folder"
 )
+
+    get_target_property(QtCore_location Qt6::Core IMPORTED_LOCATION_RELEASE)
+    get_filename_component(QtCore_bin_dir "${QtCore_location}" DIRECTORY)
+    
+    # Create the platforms directory once
+    add_custom_command(TARGET QtCPP-Installer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            "$<TARGET_FILE_DIR:QtCPP-Installer>/platforms"
+    )
+
+    # Debug config: copy qwindowsd.dll
+    add_custom_command(TARGET QtCPP-Installer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${QtCore_bin_dir}/../plugins/platforms/qwindowsd.dll"
+            "$<TARGET_FILE_DIR:QtCPP-Installer>/platforms/qwindowsd.dll"
+        COMMENT "Copying qwindowsd.dll for Debug"
+        CONFIGURATIONS Debug
+    )
+
+    # Release config: copy qwindows.dll
+    add_custom_command(TARGET QtCPP-Installer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${QtCore_bin_dir}/../plugins/platforms/qwindows.dll"
+            "$<TARGET_FILE_DIR:QtCPP-Installer>/platforms/qwindows.dll"
+        COMMENT "Copying qwindows.dll for Release"
+        CONFIGURATIONS Release
+    )
+
+    set(QT_DLLS
+        "Qt6Widgets.dll"
+        "Qt6Gui.dll"
+        "Qt6Core.dll"
+        "Qt6Widgetsd.dll"
+        "Qt6Guid.dll"
+        "Qt6Cored.dll"
+    )
+
+    foreach(dll ${QT_DLLS})
+        add_custom_command(TARGET QtCPP-Installer POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${QtCore_bin_dir}/${dll}"
+                $<TARGET_FILE_DIR:QtCPP-Installer>
+        )
+    endforeach()

@@ -6,18 +6,12 @@
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-
-    QTranslator translator;
-    const QStringList uiLanguages = QLocale::system().uiLanguages();
-    for (const QString &locale : uiLanguages) {
-        const QString baseName = "QtCPP-Installer_" + QLocale(locale).name();
-        if (translator.load(":/i18n/" + baseName)) {
-            a.installTranslator(&translator);
-            break;
-        }
-    }
+    curl_global_init(CURL_GLOBAL_ALL);
+    QApplication app(argc, argv);
     MainWindow w;
     w.show();
-    return a.exec();
+
+    int result = app.exec();
+    curl_global_cleanup();
+    return result;
 }
