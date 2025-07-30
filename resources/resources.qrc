@@ -1,6 +1,9 @@
 <RCC>
     <qresource prefix="/">
-        <file>data/Qt6CPP-App.7z</file>
+        <file>data/Data.bin</file>
         <file>dependencies/7z.dll</file>
+        <file>dependencies/libcurl.dll</file>
+        <file>dependencies/libcurl-x64.dll</file>
+        <file>dependencies/zlib1.dll</file>
     </qresource>
 </RCC>

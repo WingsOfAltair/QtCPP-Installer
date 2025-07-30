@@ -10,8 +10,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 
-set(CURL_INCLUDE_DIR "D:/GitHub/Distributed-Hash-Cracker-CPP/vcpkg/packages/curl_x64-windows/include")
-set(CURL_LIBRARY "D:/GitHub/Distributed-Hash-Cracker-CPP/vcpkg/packages/curl_x64-windows/lib/libcurl.lib")
+set(CURL_INCLUDE_DIR "D:/GitHub/vcpkg/packages/curl_x64-windows/include")
+set(CURL_LIBRARY "D:/GitHub/vcpkg/packages/curl_x64-windows/lib/libcurl.lib")
 
 # ---- Qt ----
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Concurrent)
@@ -38,7 +38,7 @@ set(HEADERS
 
 set(UI mainwindow.ui)
 
-qt_add_executable(QtCPP-Installer
+qt_add_executable(QtCPP-Installer WIN32
     MANUAL_FINALIZATION
     ${SOURCES}
     ${UI}
@@ -92,6 +92,15 @@ add_custom_command(TARGET QtCPP-Installer POST_BUILD
         "$<TARGET_FILE_DIR:QtCPP-Installer>/libcurl.dll"
     COMMENT "Copying libcurl.dll to build output folder"
 )
+
+# Copy zlib1 DLL
+add_custom_command(TARGET QtCPP-Installer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/resources/dependencies/zlib1.dll"
+        "$<TARGET_FILE_DIR:QtCPP-Installer>/zlib1.dll"
+    COMMENT "Copying zlib1.dll to build output folder"
+)
+
 
 # Copy 7z.dll
 add_custom_command(TARGET QtCPP-Installer POST_BUILD
