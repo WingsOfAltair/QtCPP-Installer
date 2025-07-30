@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QDebug>
 #include <QTabBar>
+#include <QMessageBox>
 #include <QtConcurrent/QtConcurrent>
 #include <QStandardPaths>
 #include <bit7z/bit7zlibrary.hpp>
@@ -13,8 +14,55 @@
 
 bool quitApp = false;
 
+QString getExeFolder() {
+    return QApplication::applicationDirPath();
+}
+
+QString MainWindow::extractEmbeddedDll() {
+    QString dllPath = getExeFolder() + "/7z.dll";
+
+    QFile dll(":/dependencies/7z.dll");
+    if (!dll.exists()) {
+        qWarning() << "DLL resource does not exist!";
+        return QString();
+    }
+    if (!dll.open(QIODevice::ReadOnly)) {
+        qWarning() << "Failed to open DLL resource!";
+        return QString();
+    }
+
+    QFile outFile(dllPath);
+    if (!outFile.open(QIODevice::WriteOnly)) {
+        qWarning() << "Failed to open output file:" << dllPath;
+        dll.close();  // Close before returning!
+        return QString();
+    }
+
+    QByteArray data = dll.readAll();
+    dll.close();  // Close resource here immediately after reading
+
+    qint64 written = outFile.write(data);
+    if (written != data.size()) {
+        qWarning() << "DLL write incomplete";
+    }
+
+    outFile.flush();
+    outFile.close();
+
+    qDebug() << "DLL extracted to" << dllPath;
+
+    return dllPath;
+}
+
 void MainWindow::extractResourceArchive(const QString& resourcePath, const QString& outputDir, const QString& password) {
-    QString archivePath = "Qt6CPP-App.7z";
+    QString archivePath = "Qt6CPP-App.bin";
+
+    QString dllPath = extractEmbeddedDll();
+    if (dllPath.isEmpty()) {
+        qCritical() << "Failed to extract 7z.dll";
+        return;
+    }
+
     QtConcurrent::run([=]() {
         if (ui->tabWidget->currentIndex() == 3)
         {
@@ -41,7 +89,7 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
         tempFile.close();*/
 
         try {
-            bit7z::Bit7zLibrary lib("7z.dll");
+            bit7z::Bit7zLibrary lib(dllPath.toStdString());
             bit7z::BitFileExtractor extractor(lib, bit7z::BitFormat::SevenZip);
 
             if (!password.isEmpty()) {
@@ -97,6 +145,7 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
         }
 
         //QFile::remove(archivePath);
+        QFile::remove(dllPath);
     });
 }
 

@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file>data/Qt6CPP-App.7z</file>
+        <file>dependencies/7z.dll</file>
     </qresource>
 </RCC>

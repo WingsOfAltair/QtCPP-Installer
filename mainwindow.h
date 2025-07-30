@@ -21,6 +21,7 @@ public:
 private slots:
     void NextStep();
     void BackStep();
+    QString extractEmbeddedDll();
 
 private:
     Ui::MainWindow *ui;
