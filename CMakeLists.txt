@@ -25,7 +25,6 @@ set(SOURCES
     main.cpp
     mainwindow.cpp
     downloadmanager.cpp
-    utils.cpp
 )
 
 set(HEADERS

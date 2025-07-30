@@ -42,6 +42,9 @@ private:
     QString m_filePath;
     QString m_metaPath;
 
+    qint64 m_resumeBase = 0;         // Base offset when resuming
+    qint64 m_expectedTotal = 0;      // Full file size
+
     FILE *m_file;
     CURL *m_curl;
 

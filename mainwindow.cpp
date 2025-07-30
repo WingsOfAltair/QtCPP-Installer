@@ -26,6 +26,11 @@ DownloadManager *manager;
 DownloadControlFlags *m_controlFlags;
 QThread *workerThread;
 
+QString url = "http://localhost/Data.bin";
+QString file;
+QString fileNameStr = "/Data.bin";
+QString filePath = "Data.bin";
+
 void MainWindow::closeEvent(QCloseEvent* event) {
     if (m_extractionFuture.isRunning()) {
         qDebug() << "App closing: cancelling extraction...";
@@ -51,7 +56,7 @@ void MainWindow::closeEvent(QCloseEvent* event) {
     event->accept();
 }
 
-QString getExeFolder() {
+QString MainWindow::getExeFolder() {
     return QApplication::applicationDirPath();
 }
 
@@ -203,22 +208,30 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
 void MainWindow::NextStep()
 {
     ui->tabWidget->setCurrentIndex(ui->tabWidget->currentIndex() + 1);
+    ui->backButton->setText("Back");
+    if (ui->tabWidget->currentIndex() != 4)
+    {
+        quitApp = false;
+    }
     if (ui->tabWidget->currentIndex() == 2) {
         ui->nextButton->setDisabled(true);
         ui->backButton->setDisabled(true);
-        QString filePath = "Data.bin";
 
         if (QFile::exists(filePath)) {
-            QMessageBox::StandardButton reply;
-            reply = QMessageBox::question(nullptr, "File Exists",
-                                          "The file already exists. Do you want to overwrite?",
-                                          QMessageBox::Yes | QMessageBox::No);
-            if (reply == QMessageBox::Yes) {
-                QFile::remove(filePath); // Delete old file
+            if (QFile::exists(file + ".meta")) {
                 this->onStartClicked();
             } else {
-                qDebug() << "User chose not to overwrite.";
-                ui->tabWidget->setCurrentIndex(ui->tabWidget->currentIndex() + 1);
+                QMessageBox::StandardButton reply;
+                reply = QMessageBox::question(nullptr, "File Exists",
+                                              "The file already exists. Do you want to overwrite?",
+                                              QMessageBox::Yes | QMessageBox::No);
+                if (reply == QMessageBox::Yes) {
+                    QFile::remove(filePath); // Delete old file
+                    this->onStartClicked();
+                } else {
+                    qDebug() << "User chose not to overwrite.";
+                    ui->tabWidget->setCurrentIndex(ui->tabWidget->currentIndex() + 1);
+                }
             }
         } else {
             this->onStartClicked();
@@ -265,12 +278,20 @@ void MainWindow::NextStep()
 void MainWindow::BackStep()
 {
     ui->tabWidget->setCurrentIndex(ui->tabWidget->currentIndex() - 1);
+
+    if (ui->tabWidget->currentIndex() == 0 && quitApp) {
+        QApplication::quit();
+    }
+
+    if (ui->tabWidget->currentIndex() == 0) {
+        ui->backButton->setText("Exit");
+        quitApp = true;
+    } else {
+        ui->backButton->setText("Back");
+    }
 }
 
 void MainWindow::onStartClicked() {
-    QString url = "http://localhost/Data.bin";
-    QString file = getExeFolder() + "/Data.bin";
-
     if (url.isEmpty() || file.isEmpty()) {
         QMessageBox::warning(this, "Input Error", "Please provide both URL and output file path.");
         return;
@@ -279,8 +300,12 @@ void MainWindow::onStartClicked() {
     if (QFile::exists(file + ".meta")) {
         QMessageBox::StandardButton ans = QMessageBox::question(this, "Resume?", "Resume previous download?");
         if (ans == QMessageBox::No) {
-            (file + ".meta");
-            (file);
+            if (QFile::exists(filePath)) {
+                QFile::remove(filePath);
+            }
+            if (QFile::exists(file + ".meta")) {
+                QFile::remove(file + ".meta");
+            }
         }
     }
 
@@ -367,22 +392,25 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->resumeButton, &QPushButton::clicked, this, &MainWindow::onPauseClicked);
     connect(ui->cancelButton, &QPushButton::clicked, this, &MainWindow::onCancelClicked);
 
+    ui->backButton->setText("Exit");
+    quitApp = true;
+    file = getExeFolder() + fileNameStr;
+
     ui->startButton->hide();
 
     ui->txtInstallationPath->setText("C:\\Plancksoft\\ScrutaNet\\");
 }
 
 void MainWindow::onPauseClicked() {
+    isPaused = !isPaused;
     if (isPaused) {
         if (m_controlFlags)
             m_controlFlags->paused.store(false);
         ui->resumeButton->setText("Pause Download");
-        isPaused = false;
     } else {
         if (m_controlFlags)
             m_controlFlags->paused.store(true);
         ui->resumeButton->setText("Resume Download");
-        isPaused = true;
     }
 }
 

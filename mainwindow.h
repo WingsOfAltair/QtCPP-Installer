@@ -41,5 +41,6 @@ private:
     DownloadManager *manager;
     QThread *workerThread;
     bool isPaused;
+    QString getExeFolder();
 };
 #endif // MAINWINDOW_H

@@ -50,11 +50,25 @@ qint64 DownloadManager::getRemoteFileSize() {
 #endif
 
 void DownloadManager::start() {
-    qint64 resumePos = 0;
-    if (loadMetaFile(resumePos)) {
-        qDebug() << "Resuming from" << resumePos;
+    // 1. Get remote file size for accurate ETA and progress
+    m_expectedTotal = getRemoteFileSize();
+    if (m_expectedTotal <= 0) {
+        emit error("Failed to get remote file size");
+        emit finished();
+        return;
     }
 
+    // 2. Determine resume point: min(meta info, actual file size)
+    qint64 metaResume = 0;
+    loadMetaFile(metaResume);
+    QFileInfo fi(m_filePath);
+    qint64 actualSize = fi.exists() ? fi.size() : 0;
+    qint64 resumePos = qMin(metaResume, actualSize);
+    m_resumeBase = resumePos; // For correct progress calculation
+
+    qDebug() << "Resuming from" << resumePos << "of" << m_expectedTotal;
+
+    // 3. Open file for resume or fresh download
     if (resumePos > 0) {
         m_file = fopen(m_filePath.toStdString().c_str(), "r+b");
         if (!m_file) {
@@ -62,19 +76,29 @@ void DownloadManager::start() {
             emit finished();
             return;
         }
-        if (fseeko(m_file, resumePos, SEEK_SET) != 0) {
+
+        // Seek to resume point
+#ifdef _WIN32
+        if (_fseeki64(m_file, resumePos, SEEK_SET) != 0)
+#else
+        if (fseeko(m_file, resumePos, SEEK_SET) != 0)
+#endif
+        {
             emit error("Failed to seek in file");
             fclose(m_file);
             emit finished();
             return;
         }
-// Truncate file at resumePos to avoid leftover garbage beyond that point
+
+        // Truncate any extra bytes after resume position
 #ifdef _WIN32
-        _chsize_s(fileno(m_file), resumePos);
+        _chsize_s(_fileno(m_file), resumePos);
 #else
         ftruncate(fileno(m_file), resumePos);
 #endif
+
     } else {
+        // Fresh download: overwrite file
         m_file = fopen(m_filePath.toStdString().c_str(), "wb");
         if (!m_file) {
             emit error("Cannot open file for writing");
@@ -83,6 +107,7 @@ void DownloadManager::start() {
         }
     }
 
+    // 4. Initialize CURL
     m_curl = curl_easy_init();
     if (!m_curl) {
         emit error("Failed to initialize curl");
@@ -103,15 +128,19 @@ void DownloadManager::start() {
         curl_easy_setopt(m_curl, CURLOPT_RESUME_FROM_LARGE, (curl_off_t)resumePos);
     }
 
+    // 5. Perform download
     CURLcode res = curl_easy_perform(m_curl);
+
+    // 6. Cleanup
     curl_easy_cleanup(m_curl);
     fclose(m_file);
 
+    // 7. Finalize
     if (res == CURLE_OK && !m_stopRequested.load()) {
-        deleteMetaFile();
+        deleteMetaFile(); // Remove resume data if success
         emit finished();
     } else if (m_stopRequested.load()) {
-        QThread::msleep(100);
+        QThread::msleep(100); // Cancel requested
     } else {
         emit error(QString("Download failed: %1").arg(curl_easy_strerror(res)));
         emit finished();
@@ -141,16 +170,22 @@ size_t DownloadManager::writeCallback(void *ptr, size_t size, size_t nmemb, void
 int DownloadManager::progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow,
                                       curl_off_t, curl_off_t) {
     DownloadManager *self = static_cast<DownloadManager *>(clientp);
-    self->saveMetaFile(dlnow);
 
+    // Correct absolute progress when resuming
+    qint64 totalDownloaded = self->m_resumeBase + dlnow;
+    self->saveMetaFile(totalDownloaded);
+
+    // Stop if cancel requested
     if (self->m_controlFlags && self->m_controlFlags->stopped.load(std::memory_order_relaxed)) {
-        return 1; // abort
+        return 1; // abort download
     }
 
+    // Pause logic: block thread without eating CPU
     while (self->m_controlFlags && self->m_controlFlags->paused.load(std::memory_order_relaxed)) {
         QThread::msleep(200);
     }
 
+    // Progress reporting every second
     static QElapsedTimer timer;
     static curl_off_t lastBytes = 0;
 
@@ -161,14 +196,17 @@ int DownloadManager::progressCallback(void *clientp, curl_off_t dltotal, curl_of
     if (elapsedMs > 1000) {
         curl_off_t diff = dlnow - lastBytes;
         double speedMBps = diff / (1024.0 * 1024.0) / (elapsedMs / 1000.0);
-        int eta = (dltotal > 0) ? static_cast<int>((dltotal - dlnow) / (diff / (elapsedMs / 1000.0))) : -1;
 
-        emit self->progress(dlnow, dltotal, speedMBps, eta);
+        // ETA based on total file size
+        curl_off_t remaining = (dltotal > 0) ? (dltotal - dlnow) : 0;
+        int eta = (diff > 0) ? static_cast<int>(remaining / (diff / (elapsedMs / 1000.0))) : -1;
+
+        emit self->progress(totalDownloaded, self->m_expectedTotal, speedMBps, eta);
 
         timer.restart();
         lastBytes = dlnow;
     }
-    return 0;
+    return 0; // continue download
 }
 
 bool DownloadManager::saveMetaFile(qint64 downloaded) {
