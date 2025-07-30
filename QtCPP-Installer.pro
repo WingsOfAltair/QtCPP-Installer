@@ -15,8 +15,7 @@ SOURCES += \
 
 HEADERS += \
     downloadmanager.h \
-    mainwindow.h \
-    utils.h
+    mainwindow.h
 
 FORMS += \
     mainwindow.ui

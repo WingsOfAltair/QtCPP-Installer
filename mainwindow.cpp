@@ -9,12 +9,12 @@
 #include <QStandardPaths>
 #include <QEventLoop>
 #include <QUrl>
+#include <QFileInfo>
 #include <atomic>
 #include <bit7z/bit7zlibrary.hpp>
 #include <bit7z/bitfileextractor.hpp>
 #include <bit7z/bitexception.hpp>
 #include <bit7z/bitinputarchive.hpp>
-#include "utils.h"
 #include <iostream>
 
 bool quitApp = false;
@@ -264,38 +264,75 @@ void MainWindow::BackStep()
 }
 
 void MainWindow::onStartClicked() {
-    DownloadManager *manager = new DownloadManager("http://localhost/Data.bin", "Data.bin");
-    QThread *thread = new QThread(this);
+    QString url = "http://localhost/Data.bin";
+    QString file = getExeFolder() + "/Data.bin";
 
-    manager->moveToThread(thread);
+    if (url.isEmpty() || file.isEmpty()) {
+        QMessageBox::warning(this, "Input Error", "Please provide both URL and output file path.");
+        return;
+    }
 
-    connect(thread, &QThread::started, manager, &DownloadManager::start);
-    connect(manager, &DownloadManager::progress, this,
-            [this](qint64 downloaded, qint64 total, double speed, int eta) {
-                totalFileSize = total;
-                ui->progressBarDownload->setValue(total > 0 ? (int)((downloaded * 100) / total) : 0);
-                ui->sizeLabel->setText(QString("%1 / %2").arg(downloaded).arg(total));
-                ui->speedLabel->setText(QString("Speed: %1 MB/s").arg(speed, 0, 'f', 2));
-                ui->etaLabel->setText(eta > 0 ? QString("ETA: %1 sec").arg(eta) : "ETA: --");
-            }, Qt::QueuedConnection);
+    // If file exists, prompt
+    if (QFileInfo::exists(file)) {
+        auto ans = QMessageBox::question(this, "Resume Download?",
+                                         "File already exists. Resume download?",
+                                         QMessageBox::Yes | QMessageBox::No);
+        if (ans == QMessageBox::No) {
+            QFile::remove(file);
+        }
+    }
 
-    connect(manager, &DownloadManager::error, this, [this](const QString &msg) {
-        QMessageBox::critical(this, "Error", msg);
-    });
+    manager = new DownloadManager(url, file);
+    workerThread = new QThread(this);
+    manager->moveToThread(workerThread);
 
+    connect(workerThread, &QThread::started, manager, &DownloadManager::start);
     connect(manager, &DownloadManager::finished, this, [=]() {
-        ui->etaLabel->setText("Download Complete.");
-        ui->nextButton->setDisabled(false);
         ui->progressBarDownload->setValue(100);
-        ui->sizeLabel->setText("Press Next to install files.");
+        ui->retryLabel->setText("");
+        ui->sizeLabel->setText("");
+        ui->etaLabel->setText("Download Complete.");
         ui->speedLabel->setText("");
-        thread->quit();
+        ui->startButton->setDisabled(true);
+        ui->resumeButton->setDisabled(true);
+        ui->cancelButton->setDisabled(true);
+        ui->nextButton->setDisabled(false);
+        workerThread->quit();
+    });
+    connect(manager, &DownloadManager::error, this, [=](const QString &msg) {
+        QMessageBox::critical(this, "Error", msg);
+        workerThread->quit();
+    });
+    connect(workerThread, &QThread::finished, this, [=]() {
+        manager->deleteLater();
+        workerThread->deleteLater();
+        manager = nullptr;
+        workerThread = nullptr;
     });
 
-    connect(thread, &QThread::finished, manager, &QObject::deleteLater);
-    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+    connect(manager, &DownloadManager::progress, this,
+            [=](qint64 downloaded, qint64 total, double speedMBps, int eta) {
+                int percent = (total > 0) ? static_cast<int>((downloaded * 100) / total) : 0;
+                ui->progressBarDownload->setValue(percent);
+                ui->sizeLabel->setText(QString("%1 / %2")
+                                           .arg(humanSize(downloaded))
+                                           .arg(humanSize(total)));
+                ui->speedLabel->setText(QString("Speed: %1 MB/s").arg(speedMBps, 0, 'f', 2));
+                ui->etaLabel->setText(QString("ETA: %1 sec").arg(eta >= 0 ? eta : -1));
+            });
 
-    thread->start();
+    workerThread->start();
+}
+
+QString MainWindow::humanSize(qint64 bytes) {
+    double size = bytes;
+    QStringList units = {"B", "KB", "MB", "GB", "TB"};
+    int i = 0;
+    while (size >= 1024.0 && i < units.size() - 1) {
+        size /= 1024.0;
+        i++;
+    }
+    return QString("%1 %2").arg(size, 0, 'f', 2).arg(units[i]);
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -307,12 +344,40 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->nextButton, &QPushButton::clicked, this, &MainWindow::NextStep);
     connect(ui->backButton, &QPushButton::clicked, this, &MainWindow::BackStep);
     connect(ui->startButton, &QPushButton::clicked, this, &MainWindow::onStartClicked);
+    connect(ui->resumeButton, &QPushButton::clicked, this, &MainWindow::onPauseClicked);
+    connect(ui->cancelButton, &QPushButton::clicked, this, &MainWindow::onCancelClicked);
 
     ui->startButton->hide();
-    ui->pauseButton->hide();
-    ui->cancelButton->hide();
 
     ui->txtInstallationPath->setText("C:\\Plancksoft\\ScrutaNet\\");
+}
+
+void MainWindow::onPauseClicked() {
+    if (isPaused) {
+        if (manager) manager->resume();
+        ui->resumeButton->setText("Pause Download");
+        isPaused = false;
+    } else {
+        if (manager) manager->pause();
+        ui->resumeButton->setText("Resume Download");
+        isPaused = true;
+    }
+}
+
+void MainWindow::onCancelClicked() {
+    if (manager) {
+        manager->cancel();
+        ui->cancelButton->setDisabled(true);
+        ui->resumeButton->setText("Download Canceled.");
+        ui->resumeButton->setDisabled(true);
+        ui->etaLabel->setText("Download Canceled.");
+        ui->sizeLabel->setText("");
+        ui->speedLabel->setText("");
+        ui->progressBarDownload->setValue(0);
+        workerThread->quit();
+        workerThread->wait();
+        QApplication::quit();
+    }
 }
 
 MainWindow::~MainWindow() {

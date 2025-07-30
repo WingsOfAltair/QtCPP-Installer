@@ -122,7 +122,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
           <string>Start Download</string>
          </property>
         </widget>
-        <widget class="QPushButton" name="pauseButton">
+        <widget class="QPushButton" name="resumeButton">
          <property name="geometry">
           <rect>
            <x>520</x>

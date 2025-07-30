@@ -13,6 +13,8 @@ class MainWindow;
 }
 QT_END_NAMESPACE
 
+class QThread;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -25,16 +27,19 @@ private slots:
     void NextStep();
     void BackStep();
     void onStartClicked();
+    void onPauseClicked();
+    void onCancelClicked();
     QString extractEmbeddedDll();
     void cancelExtraction();
     void closeEvent(QCloseEvent* event);
 
 private:
     Ui::MainWindow *ui;
+    QString humanSize(qint64 bytes);
     void extractResourceArchive(const QString& resourcePath, const QString& outputDir, const QString& password = QString());
     QFutureWatcher<void> m_extractionWatcher;
     DownloadManager *manager;
-    QThread *managerThread;
+    QThread *workerThread;
     bool isPaused;
 };
 #endif // MAINWINDOW_H
