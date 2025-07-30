@@ -15,10 +15,12 @@
 #include <bit7z/bitexception.hpp>
 #include <bit7z/bitinputarchive.hpp>
 #include "utils.h"
+#include <iostream>
 
 bool quitApp = false;
 std::atomic<bool> m_cancelExtraction {false};
 QFuture<void> m_extractionFuture;
+qint64 totalFileSize;
 
 void MainWindow::closeEvent(QCloseEvent* event) {
     if (m_extractionFuture.isRunning()) {
@@ -177,10 +179,11 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
             extractor.extract(archivePath.toStdString(), outputDir.toStdString());
 
             QMetaObject::invokeMethod(this, [this]() {
-                qDebug() << "Extraction completed!";
+                qDebug() << "Extraction Completed!";
+                ui->lblInstallationStatus->setText("Installing Completed.");
                 ui->nextButton->setDisabled(false);
                 ui->backButton->setDisabled(true);
-                ui->labelTime->setText("Installation completed.");
+                ui->labelTime->setText("Installation Completed.");
             }, Qt::QueuedConnection);
 
         } catch (const bit7z::BitException& e) {
@@ -197,7 +200,25 @@ void MainWindow::NextStep()
 {
     ui->tabWidget->setCurrentIndex(ui->tabWidget->currentIndex() + 1);
     if (ui->tabWidget->currentIndex() == 2) {
+        ui->nextButton->setDisabled(true);
+        ui->backButton->setDisabled(true);
+        QString filePath = "Data.bin";
 
+        if (QFile::exists(filePath)) {
+            QMessageBox::StandardButton reply;
+            reply = QMessageBox::question(nullptr, "File Exists",
+                                          "The file already exists. Do you want to overwrite?",
+                                          QMessageBox::Yes | QMessageBox::No);
+            if (reply == QMessageBox::Yes) {
+                QFile::remove(filePath); // Delete old file
+                this->onStartClicked();
+            } else {
+                qDebug() << "User chose not to overwrite.";
+                ui->tabWidget->setCurrentIndex(ui->tabWidget->currentIndex() + 1);
+            }
+        } else {
+            this->onStartClicked();
+        }
     }
     if (ui->tabWidget->currentIndex() == 3) {
         ui->nextButton->setDisabled(true);
@@ -207,6 +228,7 @@ void MainWindow::NextStep()
         //dir.cdUp();  // Goes one level up (removes the last folder)
 
         QString parentPath = dir.absolutePath();  // This is the path without the last folder
+        ui->lblInstallationStatus->setText("Installing...");
         extractResourceArchive(":/data/Data.bin", parentPath, "bashar");
     }
     if (ui->tabWidget->currentIndex() == 4 && !quitApp)
@@ -242,95 +264,38 @@ void MainWindow::BackStep()
 }
 
 void MainWindow::onStartClicked() {
-    if (manager) return;
+    DownloadManager *manager = new DownloadManager("http://localhost/Data.bin", "Data.bin");
+    QThread *thread = new QThread(this);
 
-    QString url = "http://localhost/Data.bin";
-    QString file = "Data.bin";
+    manager->moveToThread(thread);
 
-    if (file.isEmpty()) {
-        QUrl qurl(url);
-        file = qurl.fileName().isEmpty() ? "Data.bin" : qurl.fileName();
-    }
+    connect(thread, &QThread::started, manager, &DownloadManager::start);
+    connect(manager, &DownloadManager::progress, this,
+            [this](qint64 downloaded, qint64 total, double speed, int eta) {
+                totalFileSize = total;
+                ui->progressBarDownload->setValue(total > 0 ? (int)((downloaded * 100) / total) : 0);
+                ui->sizeLabel->setText(QString("%1 / %2").arg(downloaded).arg(total));
+                ui->speedLabel->setText(QString("Speed: %1 MB/s").arg(speed, 0, 'f', 2));
+                ui->etaLabel->setText(eta > 0 ? QString("ETA: %1 sec").arg(eta) : "ETA: --");
+            }, Qt::QueuedConnection);
 
-    // Resume prompt
-    if (QFile::exists(file + ".meta")) {
-        QMessageBox::StandardButton ans = QMessageBox::question(
-            this,
-            "Resume Download",
-            "A partial download was found.\nDo you want to resume? Choose No if you want to start fresh.",
-            QMessageBox::Yes | QMessageBox::No,
-            QMessageBox::Yes
-            );
-        if (ans == QMessageBox::No) {
-            QFile::remove(file + ".meta");
-            for (int i = 0; i < 10; i++) {
-                QFile::remove(file + QString(".part%1").arg(i));
-            }
-        }
-    }
-
-    manager = new DownloadManager(url, file);
-    managerThread = new QThread(this);  // parented to MainWindow
-
-    manager->moveToThread(managerThread);
-
-    connect(managerThread, &QThread::started, manager, &DownloadManager::start);
-
-    connect(manager, &DownloadManager::finished, this, [=]() {
-        QMessageBox::information(this, "Done", "Download complete!");
-        ui->retryLabel->clear();
-        managerThread->quit();
-    });
-
-    connect(manager, &DownloadManager::error, this, [=](const QString &msg) {
+    connect(manager, &DownloadManager::error, this, [this](const QString &msg) {
         QMessageBox::critical(this, "Error", msg);
     });
 
-    /*connect(manager, &DownloadManager::retryStatus, this, [=](int segmentIndex, int attempt) {
-        ui->retryLabel->setText(QString("Retrying segment %1 (Attempt %2)...").arg(segmentIndex).arg(attempt));
-    });*/
-
-    connect(manager, &DownloadManager::progress, this, [=](qint64 downloaded, qint64 total, double speedMBps, int eta) {
-        ui->progressBarDownload->setValue(total > 0 ? static_cast<int>((downloaded * 100) / total) : 0);
-        ui->etaLabel->setText(QString("ETA: %1 sec").arg(eta));
-        ui->speedLabel->setText(QString("Speed: %1 MB/s").arg(speedMBps, 0, 'f', 2));
-        ui->sizeLabel->setText(QString("%1 / %2").arg(humanSize(downloaded)).arg(humanSize(total)));
+    connect(manager, &DownloadManager::finished, this, [=]() {
+        ui->etaLabel->setText("Download Complete.");
+        ui->nextButton->setDisabled(false);
+        ui->progressBarDownload->setValue(100);
+        ui->sizeLabel->setText("Press Next to install files.");
+        ui->speedLabel->setText("");
+        thread->quit();
     });
 
-    connect(managerThread, &QThread::finished, this, [=]() {
-        manager->deleteLater();
-        managerThread->deleteLater();
-        manager = nullptr;
-        managerThread = nullptr;
-    });
+    connect(thread, &QThread::finished, manager, &QObject::deleteLater);
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
 
-    managerThread->start();
-}
-
-void MainWindow::onPauseClicked() {
-    if (!manager) return;
-    if (isPaused) {
-        manager->resume();
-        ui->pauseButton->setText("Pause");
-        isPaused = false;
-    } else {
-        manager->pause();
-        ui->pauseButton->setText("Resume");
-        isPaused = true;
-    }
-}
-
-void MainWindow::onCancelClicked() {
-    if (!manager) return;
-    manager->cancel();
-
-    ui->retryLabel->clear();
-    ui->progressBarDownload->setValue(0);
-    ui->etaLabel->setText("ETA: 0 sec");
-    ui->speedLabel->setText("Speed: 0 MB/s");
-    ui->sizeLabel->setText("0 / 0");
-    isPaused = false;
-    ui->pauseButton->setText("Pause");
+    thread->start();
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -342,9 +307,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->nextButton, &QPushButton::clicked, this, &MainWindow::NextStep);
     connect(ui->backButton, &QPushButton::clicked, this, &MainWindow::BackStep);
     connect(ui->startButton, &QPushButton::clicked, this, &MainWindow::onStartClicked);
-    connect(ui->pauseButton, &QPushButton::clicked, this, &MainWindow::onPauseClicked);
-    connect(ui->cancelButton, &QPushButton::clicked, this, &MainWindow::onCancelClicked);
-    ui->txtInstallationPath->setText("C:\\Qt6CPP-App\\");
+
+    ui->startButton->hide();
+    ui->pauseButton->hide();
+    ui->cancelButton->hide();
+
+    ui->txtInstallationPath->setText("C:\\Plancksoft\\ScrutaNet\\");
 }
 
 MainWindow::~MainWindow() {

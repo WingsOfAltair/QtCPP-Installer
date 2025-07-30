@@ -10,9 +10,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 
+set(CURL_INCLUDE_DIR "D:/GitHub/vcpkg/packages/curl_x64-windows/include")
+set(CURL_LIBRARY "D:/GitHub/vcpkg/packages/curl_x64-windows/lib/libcurl.lib")
+
 # ---- Qt ----
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Network Widgets LinguistTools Concurrent)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network Widgets LinguistTools Concurrent)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Concurrent)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Concurrent)
+find_package(CURL REQUIRED)
 
 set(TS_FILES QtCPP-Installer_en_US.ts)
 
@@ -21,14 +25,12 @@ set(SOURCES
     main.cpp
     mainwindow.cpp
     downloadmanager.cpp
-    segmentdownloader.cpp
     utils.cpp
 )
 
 set(HEADERS
     mainwindow.h
     downloadmanager.h
-    segmentdownloader.h
     utils.h
 )
 
@@ -60,15 +62,34 @@ else()
 endif()
 
 # ---- Link Qt ----
-target_link_libraries(QtCPP-Installer PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt6::Core Qt6::Network Threads::Threads)
+target_link_libraries(QtCPP-Installer PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Threads::Threads)
 
 # ---- Finalize ----
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(QtCPP-Installer)
 endif()
 
+target_include_directories(QtCPP-Installer PRIVATE ${CURL_INCLUDE_DIR})
+target_link_libraries(QtCPP-Installer PRIVATE CURL::libcurl)
+
 # Output directory (Qt Creator uses this for Debug/Release)
 set(OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
+
+# Copy libcurl-x64 DLL
+add_custom_command(TARGET QtCPP-Installer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/resources/dependencies/libcurl-x64.dll"
+        "$<TARGET_FILE_DIR:QtCPP-Installer>/libcurl-x64.dll"
+    COMMENT "Copying libcurl-x64.dll to build output folder"
+)
+
+# Copy libcurl DLL
+add_custom_command(TARGET QtCPP-Installer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/resources/dependencies/libcurl.dll"
+        "$<TARGET_FILE_DIR:QtCPP-Installer>/libcurl.dll"
+    COMMENT "Copying libcurl.dll to build output folder"
+)
 
 # Copy zlib1 DLL
 add_custom_command(TARGET QtCPP-Installer POST_BUILD

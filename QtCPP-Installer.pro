@@ -11,13 +11,11 @@ TARGET = QtCPP-Installer
 SOURCES += \
     downloadmanager.cpp \
     main.cpp \
-    mainwindow.cpp \
-    segmentdownloader.cpp
+    mainwindow.cpp
 
 HEADERS += \
     downloadmanager.h \
     mainwindow.h \
-    segmentdownloader.h \
     utils.h
 
 FORMS += \
@@ -28,9 +26,11 @@ RESOURCES += \
 
 # ---- Include Paths ----
 INCLUDEPATH += D:/GitHub/bit7z/include
+INCLUDEPATH += D:/GitHub/vcpkg/packages/curl_x64-windows/include
 
 # ---- Libraries ----
 LIBS += -LD:/GitHub/bit7z/lib/x64/Debug -lbit7z -loleaut32
+LIBS += D:/GitHub/vcpkg/packages/curl_x64-windows/lib/libcurl.lib
 
 # ---- Windows Target ----
 DEFINES += _WIN32_WINNT=0x0601

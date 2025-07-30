@@ -25,8 +25,6 @@ private slots:
     void NextStep();
     void BackStep();
     void onStartClicked();
-    void onPauseClicked();
-    void onCancelClicked();
     QString extractEmbeddedDll();
     void cancelExtraction();
     void closeEvent(QCloseEvent* event);

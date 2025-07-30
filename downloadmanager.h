@@ -2,49 +2,47 @@
 #define DOWNLOADMANAGER_H
 
 #include <QObject>
-#include <QList>
+#include <QFile>
+#include <atomic>
 #include <QElapsedTimer>
-#include "segmentdownloader.h"
+#include <QString>
+#include <curl/curl.h>
 
 class DownloadManager : public QObject {
     Q_OBJECT
+
 public:
     explicit DownloadManager(const QString &url, const QString &outputFile, QObject *parent = nullptr);
     ~DownloadManager();
 
-    void start();
-    void pause();
-    void resume();
-    void cancel();
+public slots:
+    void start();       // Start download
+    void pause();       // Pause download
+    void cancel();      // Cancel download
 
 signals:
-signals:
-    void progress(qint64 downloaded, qint64 total, double speedMBps, int eta);
+    void progress(qint64 downloaded, qint64 total, double speedMBps, int etaSeconds);
     void finished();
     void error(const QString &message);
 
-private slots:
-    void segmentProgress(qint64 bytesReceived, qint64 bytesTotal);
-    void segmentFinished();
-    void segmentError(const QString &msg);
-
 private:
-    QElapsedTimer m_timer;
-    qint64 m_lastBytesReceived = 0;
+    static size_t writeCallback(void *ptr, size_t size, size_t nmemb, void *userdata);
+    static int progressCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t, curl_off_t);
+
     QString m_url;
     QString m_outputFile;
-    qint64 m_totalSize = 0;
+    std::atomic<bool> m_stopRequested;
+    std::atomic<bool> m_pauseRequested;
 
-    QList<SegmentDownloader*> m_segments;
-    qint64 m_downloaded = 0;
+    CURL *m_curl;
+    QFile m_file;
+    QElapsedTimer m_timer;
+    qint64 m_lastBytes;
 
-    bool m_paused = false;
-    bool m_cancelled = false;
+    int m_retryCount;
+    int m_retryDelay;
 
-    void mergeSegments();
-
-    void initializeSegments(int segmentCount = 4);  // split into 4 parts by default
-    qint64 getRemoteFileSize();
+    bool performDownload();
 };
 
 #endif // DOWNLOADMANAGER_H
