@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QProgressBar>
+#include <QFutureWatcher>
+#include <QCloseEvent>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -22,9 +24,12 @@ private slots:
     void NextStep();
     void BackStep();
     QString extractEmbeddedDll();
+    void cancelExtraction();
+    void closeEvent(QCloseEvent* event);
 
 private:
     Ui::MainWindow *ui;
     void extractResourceArchive(const QString& resourcePath, const QString& outputDir, const QString& password = QString());
+    QFutureWatcher<void> m_extractionWatcher;
 };
 #endif // MAINWINDOW_H

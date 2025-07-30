@@ -7,15 +7,48 @@
 #include <QMessageBox>
 #include <QtConcurrent/QtConcurrent>
 #include <QStandardPaths>
+#include <QEventLoop>
+#include <atomic>
 #include <bit7z/bit7zlibrary.hpp>
 #include <bit7z/bitfileextractor.hpp>
 #include <bit7z/bitexception.hpp>
 #include <bit7z/bitinputarchive.hpp>
 
 bool quitApp = false;
+std::atomic<bool> m_cancelExtraction {false};
+QFuture<void> m_extractionFuture;
+
+void MainWindow::closeEvent(QCloseEvent* event) {
+    if (m_extractionFuture.isRunning()) {
+        qDebug() << "App closing: cancelling extraction...";
+        m_cancelExtraction.store(true);
+
+        QEventLoop loop;
+        QTimer timer;
+        timer.setSingleShot(true);
+
+        QObject::connect(&m_extractionWatcher, &QFutureWatcher<void>::finished, &loop, &QEventLoop::quit);
+        QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+        timer.start(5000);  // 5 seconds timeout
+        loop.exec();
+
+        if (m_extractionFuture.isRunning()) {
+            qWarning() << "Extraction did not stop within timeout.";
+        } else {
+            qDebug() << "Extraction stopped cleanly.";
+        }
+    }
+
+    event->accept();
+}
 
 QString getExeFolder() {
     return QApplication::applicationDirPath();
+}
+
+void MainWindow::cancelExtraction() {
+    m_cancelExtraction.store(true, std::memory_order_relaxed);
 }
 
 QString MainWindow::extractEmbeddedDll() {
@@ -63,7 +96,9 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
         return;
     }
 
-    QtConcurrent::run([=]() {
+    m_cancelExtraction.store(false);
+
+    m_extractionFuture = QtConcurrent::run([=]() {
         if (ui->tabWidget->currentIndex() == 3)
         {
             ui->nextButton->setDisabled(true);
@@ -107,6 +142,12 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
             timer.start();
 
             extractor.setProgressCallback([this, totalSize, timer](uint64_t processedSize) -> bool {
+                if (m_cancelExtraction.load(std::memory_order_relaxed)) {
+                    qDebug() << "Extraction canceled by user.";
+                    //QFile::remove(archivePath);
+                    QFile::remove("7z.dll");
+                    return false; // Stops extraction
+                }
                 int percent = totalSize > 0 ? static_cast<int>((processedSize * 100) / totalSize) : 0;
 
                 // Calculate time remaining
@@ -147,6 +188,7 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
         //QFile::remove(archivePath);
         QFile::remove(dllPath);
     });
+    m_extractionWatcher.setFuture(m_extractionFuture);
 }
 
 void MainWindow::NextStep()
