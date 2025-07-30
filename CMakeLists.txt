@@ -8,102 +8,103 @@ set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 
+set(CURL_INCLUDE_DIR "D:/GitHub/Distributed-Hash-Cracker-CPP/vcpkg/packages/curl_x64-windows/include")
+set(CURL_LIBRARY "D:/GitHub/Distributed-Hash-Cracker-CPP/vcpkg/packages/curl_x64-windows/lib/libcurl.lib")
+
+# ---- Qt ----
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Concurrent)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Concurrent)
+find_package(CURL REQUIRED)
 
 set(TS_FILES QtCPP-Installer_en_US.ts)
 
-set(PROJECT_SOURCES
-        main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
-        ${TS_FILES}
+# ---- Sources ----
+set(SOURCES
+    main.cpp
+    mainwindow.cpp
+    downloadmanager.cpp
+    segmentdownloader.cpp
+    utils.cpp
 )
 
-if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(QtCPP-Installer
-        MANUAL_FINALIZATION
-        ${PROJECT_SOURCES}
-    )
-# Define target properties for Android with Qt 6 as:
-#    set_property(TARGET QtCPP-Installer APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-#                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
-# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
+set(HEADERS
+    mainwindow.h
+    downloadmanager.h
+    segmentdownloader.h
+    utils.h
+)
 
-    qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
-else()
-    if(ANDROID)
-        add_library(QtCPP-Installer SHARED
-            ${PROJECT_SOURCES}
-        )
-# Define properties for Android with Qt 5 after find_package() calls as:
-#    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
-    else()
-        add_executable(QtCPP-Installer
-            ${PROJECT_SOURCES}
-        )
-    endif()
+set(UI mainwindow.ui)
 
-    qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
-endif()
+qt_add_executable(QtCPP-Installer
+    MANUAL_FINALIZATION
+    ${SOURCES}
+    ${UI}
+    ${TS_FILES}
+)
 
+qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
+
+# ---- Qt Resources ----
 qt_add_resources(resources resources/resources.qrc)
 target_sources(QtCPP-Installer PRIVATE ${resources})
 
+# ---- Bit7z ----
 set(BIT7Z_INCLUDE_DIR "D:/GitHub/bit7z/include")
-set(BIT7Z_LIB_DIR "D:/GitHub/bit7z/lib/x64/Debug")
-
+set(BIT7Z_LIB_DIR "D:/GitHub/bit7z/lib/x64")
 target_include_directories(QtCPP-Installer PRIVATE ${BIT7Z_INCLUDE_DIR})
-target_link_directories(QtCPP-Installer PRIVATE ${BIT7Z_LIB_DIR})
-target_link_libraries(QtCPP-Installer PRIVATE bit7z)
 
-target_link_libraries(QtCPP-Installer PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
-
-# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
-# If you are developing for iOS or macOS you should consider setting an
-# explicit, fixed bundle identifier manually though.
-if(${QT_VERSION} VERSION_LESS 6.1.0)
-  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.QtCPP-Installer)
+# Correct Debug/Release handling
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/Debug/bit7z.lib")
+else()
+    target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/Release/bit7z.lib")
 endif()
-set_target_properties(QtCPP-Installer PROPERTIES
-    ${BUNDLE_ID_OPTION}
-    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    MACOSX_BUNDLE TRUE
-    WIN32_EXECUTABLE TRUE
-)
 
-include(GNUInstallDirs)
-install(TARGETS QtCPP-Installer
-    BUNDLE DESTINATION .
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+# ---- Link Qt ----
+target_link_libraries(QtCPP-Installer PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Threads::Threads)
 
+# ---- Finalize ----
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(QtCPP-Installer)
 endif()
 
-# Path to your source data folder
-set(DATA_DIR "${CMAKE_SOURCE_DIR}/resources/data")
+target_include_directories(QtCPP-Installer PRIVATE ${CURL_INCLUDE_DIR})
+target_link_libraries(QtCPP-Installer PRIVATE CURL::libcurl)
 
-# Destination: inside build's runtime folder (debug/release)
-set(DATA_DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
+# Output directory (Qt Creator uses this for Debug/Release)
+set(OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 
-# Copy the entire data folder after build
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${DATA_DIR}"
-        "${DATA_DESTINATION}/"
-    COMMENT "Copying data folder to ${DATA_DESTINATION}/"
+# Copy libcurl-x64 DLL
+add_custom_command(TARGET QtCPP-Installer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/resources/dependencies/libcurl-x64.dll"
+        "$<TARGET_FILE_DIR:QtCPP-Installer>/libcurl-x64.dll"
+    COMMENT "Copying libcurl-x64.dll to build output folder"
 )
 
-# Copy 7z.dll after build
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+# Copy libcurl DLL
+add_custom_command(TARGET QtCPP-Installer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_SOURCE_DIR}/resources/dependencies/libcurl.dll"
+        "$<TARGET_FILE_DIR:QtCPP-Installer>/libcurl.dll"
+    COMMENT "Copying libcurl.dll to build output folder"
+)
+
+# Copy 7z.dll
+add_custom_command(TARGET QtCPP-Installer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "C:/Program Files/7-Zip/7z.dll"
-        "${DATA_DESTINATION}/7z.dll"
-    COMMENT "Copying 7z.dll to ${DATA_DESTINATION}/"
+        "$<TARGET_FILE_DIR:QtCPP-Installer>/7z.dll"
+    COMMENT "Copying 7z.dll"
+)
+
+# Copy resources/data folder
+add_custom_command(TARGET QtCPP-Installer POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/resources/data"
+        "$<TARGET_FILE_DIR:QtCPP-Installer>/data"
+    COMMENT "Copying data folder"
 )
