@@ -10,13 +10,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 
-set(CURL_INCLUDE_DIR "D:/GitHub/vcpkg/packages/curl_x64-windows/include")
-set(CURL_LIBRARY "D:/GitHub/vcpkg/packages/curl_x64-windows/lib/libcurl.lib")
-
 # ---- Qt ----
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Concurrent)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Concurrent)
-find_package(CURL REQUIRED)
 
 set(TS_FILES QtCPP-Installer_en_US.ts)
 
@@ -70,12 +66,24 @@ if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(QtCPP-Installer)
 endif()
 
-target_include_directories(QtCPP-Installer PRIVATE ${CURL_INCLUDE_DIR})
-target_link_libraries(QtCPP-Installer PRIVATE CURL::libcurl)
+if(WIN32)
+    set(CURL_INCLUDE_DIR "D:/GitHub/vcpkg/packages/curl_x64-windows/include")
+    set(CURL_LIBRARY "D:/GitHub/vcpkg/packages/curl_x64-windows/lib/libcurl.lib")
+    include_directories(${CURL_INCLUDE_DIR})
+    target_include_directories(QtCPP-Installer PRIVATE ${CURL_INCLUDE_DIR})
+    target_link_libraries(QtCPP-Installer PRIVATE "${CURL_LIBRARY}")
+    message(STATUS "Using CURL from: ${CURL_INCLUDE_DIR}")
+else()
+    find_package(CURL REQUIRED)
+    if (CURL_FOUND)
+        include_directories(${CURL_INCLUDE_DIRS})
+    endif()
+endif()
 
 if(UNIX)
     target_link_libraries(${PROJECT_NAME} PRIVATE pthread)
     target_link_libraries(${PROJECT_NAME} PRIVATE bit7z)
+    target_link_libraries(QtCPP-Installer PRIVATE CURL::libcurl)
 endif()
 
 # Output directory (Qt Creator uses this for Debug/Release)
