@@ -74,7 +74,7 @@ if(WIN32)
     endif()
 elseif(UNIX)
     # On Linux link the bit7z shared/static library (e.g. libbit7z.so or libbit7z.a)
-    target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/libbit7z.a")  # or .so
+    target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/x64/libbit7z64.a")  # or .so
 endif()
 
 if(UNIX)
