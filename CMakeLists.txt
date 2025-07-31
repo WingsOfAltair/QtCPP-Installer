@@ -60,8 +60,8 @@ if(WIN32)
     set(BIT7Z_LIB_DIR "D:/GitHub/bit7z/lib/x64")
 elseif(UNIX)
     # Adjust this path to where you have bit7z installed on Linux
-    set(BIT7Z_INCLUDE_DIR "/home/basharmbataineh/bit7z/include")
-    set(BIT7Z_LIB_DIR "/home/basharmbataineh/bit7z/lib")
+    set(BIT7Z_INCLUDE_DIR "/home/basharmbataineh/Desktop/bit7z/include")
+    set(BIT7Z_LIB_DIR "/home/basharmbataineh/Desktop/bit7z/lib")
 endif()
 
 target_include_directories(QtCPP-Installer PRIVATE ${BIT7Z_INCLUDE_DIR})
