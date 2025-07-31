@@ -10,10 +10,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 
+set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 # ---- Qt ----
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Concurrent)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Concurrent)
-find_package(Threads REQUIRED)
 
 set(TS_FILES QtCPP-Installer_en_US.ts)
 
@@ -45,18 +48,22 @@ qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
 qt_add_resources(resources resources/resources.qrc)
 target_sources(QtCPP-Installer PRIVATE ${resources})
 
-# ---- Bit7z ----
-set(BIT7Z_INCLUDE_DIR "D:/GitHub/bit7z/include")
-set(BIT7Z_LIB_DIR "D:/GitHub/bit7z/lib/x64")
-target_include_directories(QtCPP-Installer PRIVATE ${BIT7Z_INCLUDE_DIR})
-
 if(WIN32)
+    # ---- Bit7z ----
+    set(BIT7Z_INCLUDE_DIR "D:/GitHub/bit7z/include")
+    set(BIT7Z_LIB_DIR "D:/GitHub/bit7z/lib/x64")
+    target_include_directories(QtCPP-Installer PRIVATE ${BIT7Z_INCLUDE_DIR})
+
     # Correct Debug/Release handling
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/Debug/bit7z.lib")
     else()
         target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/Release/bit7z.lib")
     endif()
+endif()
+
+if(UNIX)
+    target_link_libraries(test_threads PRIVATE Threads::Threads)
 endif()
 
 # ---- Link Qt ----
