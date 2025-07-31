@@ -216,6 +216,8 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
                 ui->nextButton->setDisabled(false);
                 ui->backButton->setDisabled(true);
                 ui->labelTime->setText("Installation Completed.");
+                ui->cancelInstallationButton->setDisabled(true);
+                ui->resumeInstallationButton->setDisabled(true);
             }, Qt::QueuedConnection);
 
         } catch (const bit7z::BitException& e) {
