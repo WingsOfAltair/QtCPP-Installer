@@ -56,17 +56,25 @@ qt_add_resources(resources resources/resources.qrc)
 target_sources(QtCPP-Installer PRIVATE ${resources})
 
 if(WIN32)
-    # ---- Bit7z ----
     set(BIT7Z_INCLUDE_DIR "D:/GitHub/bit7z/include")
     set(BIT7Z_LIB_DIR "D:/GitHub/bit7z/lib/x64")
-    target_include_directories(QtCPP-Installer PRIVATE ${BIT7Z_INCLUDE_DIR})
+elseif(UNIX)
+    # Adjust this path to where you have bit7z installed on Linux
+    set(BIT7Z_INCLUDE_DIR "/home/basharmbataineh/bit7z/include")
+    set(BIT7Z_LIB_DIR "/home/basharmbataineh/bit7z/lib")
+endif()
 
-    # Correct Debug/Release handling
+target_include_directories(QtCPP-Installer PRIVATE ${BIT7Z_INCLUDE_DIR})
+
+if(WIN32)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/Debug/bit7z.lib")
     else()
         target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/Release/bit7z.lib")
     endif()
+elseif(UNIX)
+    # On Linux link the bit7z shared/static library (e.g. libbit7z.so or libbit7z.a)
+    target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/libbit7z.a")  # or .so
 endif()
 
 if(UNIX)
