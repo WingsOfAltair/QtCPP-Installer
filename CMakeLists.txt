@@ -63,7 +63,7 @@ if(WIN32)
 endif()
 
 if(UNIX)
-    target_link_libraries(test_threads PRIVATE Threads::Threads)
+    target_link_libraries(QtCPP-Installer PRIVATE Threads::Threads)
 endif()
 
 # ---- Link Qt ----
