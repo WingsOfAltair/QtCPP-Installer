@@ -105,7 +105,6 @@ endif()
 
 if(UNIX)
     target_link_libraries(${PROJECT_NAME} PRIVATE pthread)
-    target_link_libraries(${PROJECT_NAME} PRIVATE bit7z)
     target_link_libraries(QtCPP-Installer PRIVATE CURL::libcurl)
     target_link_libraries(QtCPP-Installer PRIVATE Threads::Threads)
 endif()
