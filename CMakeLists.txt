@@ -21,10 +21,6 @@ set(CMAKE_THREAD_LIBS_INIT "-lpthread")
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-if(UNIX)
-    target_link_libraries(QtCPP-Installer PRIVATE Threads::Threads)
-endif()
-
 # ---- Qt ----
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools Concurrent)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Concurrent)
@@ -111,6 +107,7 @@ if(UNIX)
     target_link_libraries(${PROJECT_NAME} PRIVATE pthread)
     target_link_libraries(${PROJECT_NAME} PRIVATE bit7z)
     target_link_libraries(QtCPP-Installer PRIVATE CURL::libcurl)
+    target_link_libraries(QtCPP-Installer PRIVATE Threads::Threads)
 endif()
 
 # Output directory (Qt Creator uses this for Debug/Release)
