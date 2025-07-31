@@ -65,7 +65,11 @@ void MainWindow::cancelExtraction() {
 }
 
 QString MainWindow::extractEmbeddedDll() {
+#ifdef Q_OS_WIN
     QString dllPath = getExeFolder() + "/7z.dll";
+#else
+    QString dllPath = "/usr/lib/x86_64-linux-gnu/lib7z.so";  // Adjust for your system
+#endif
 
     QFile dll(":/dependencies/7z.dll");
     if (!dll.exists()) {
@@ -263,7 +267,11 @@ void MainWindow::NextStep()
             QApplication::quit();
         }
         else {
+#ifdef Q_OS_WIN
             QString exePath = QDir::cleanPath(ui->txtInstallationPath->toPlainText() + "/ScrutaNet-Server-GUI.exe");
+#else
+            QString exePath = QDir::cleanPath(ui->txtInstallationPath->toPlainText() + "/ScrutaNet-Server-GUI");
+#endif
 
             bool started = QProcess::startDetached(exePath, {}, ui->txtInstallationPath->toPlainText());
 

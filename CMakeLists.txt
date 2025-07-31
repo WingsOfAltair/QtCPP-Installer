@@ -53,11 +53,13 @@ set(BIT7Z_INCLUDE_DIR "D:/GitHub/bit7z/include")
 set(BIT7Z_LIB_DIR "D:/GitHub/bit7z/lib/x64")
 target_include_directories(QtCPP-Installer PRIVATE ${BIT7Z_INCLUDE_DIR})
 
-# Correct Debug/Release handling
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/Debug/bit7z.lib")
-else()
-    target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/Release/bit7z.lib")
+if(WIN32)
+    # Correct Debug/Release handling
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/Debug/bit7z.lib")
+    else()
+        target_link_libraries(QtCPP-Installer PRIVATE "${BIT7Z_LIB_DIR}/Release/bit7z.lib")
+    endif()
 endif()
 
 # ---- Link Qt ----
@@ -71,9 +73,15 @@ endif()
 target_include_directories(QtCPP-Installer PRIVATE ${CURL_INCLUDE_DIR})
 target_link_libraries(QtCPP-Installer PRIVATE CURL::libcurl)
 
+if(UNIX)
+    target_link_libraries(${PROJECT_NAME} PRIVATE pthread)
+    target_link_libraries(${PROJECT_NAME} PRIVATE bit7z)
+endif()
+
 # Output directory (Qt Creator uses this for Debug/Release)
 set(OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 
+if(WIN32)
 # Copy libcurl-x64 DLL
 add_custom_command(TARGET QtCPP-Installer POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -99,16 +107,18 @@ add_custom_command(TARGET QtCPP-Installer POST_BUILD
 )
 
 # Copy resources/data folder
-add_custom_command(TARGET QtCPP-Installer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/resources/data"
-        "$<TARGET_FILE_DIR:QtCPP-Installer>/data"
-    COMMENT "Copying data folder"
-)
+#add_custom_command(TARGET QtCPP-Installer POST_BUILD
+    #COMMAND ${CMAKE_COMMAND} -E copy_directory
+        #"${CMAKE_SOURCE_DIR}/resources/data"
+        #"$<TARGET_FILE_DIR:QtCPP-Installer>/data"
+    #COMMENT "Copying data folder"
+#)
+endif()
 
     get_target_property(QtCore_location Qt6::Core IMPORTED_LOCATION_RELEASE)
     get_filename_component(QtCore_bin_dir "${QtCore_location}" DIRECTORY)
-    
+   
+if(WIN32) 
     # Create the platforms directory once
     add_custom_command(TARGET QtCPP-Installer POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -149,3 +159,4 @@ add_custom_command(TARGET QtCPP-Installer POST_BUILD
                 $<TARGET_FILE_DIR:QtCPP-Installer>
         )
     endforeach()
+endif()
