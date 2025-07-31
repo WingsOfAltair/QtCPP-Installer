@@ -9,6 +9,7 @@
 #include <QStandardPaths>
 #include <QEventLoop>
 #include <QUrl>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <atomic>
 #include <bit7z/bit7zlibrary.hpp>
@@ -30,6 +31,19 @@ QString url = "http://localhost/Data.bin";
 QString file;
 QString fileNameStr = "/Data.bin";
 QString filePath = "Data.bin";
+
+QString getDefaultInstallPath() {
+#ifdef Q_OS_WIN
+    QString programFiles = qEnvironmentVariable("ProgramFiles");
+    if (programFiles.isEmpty())
+        programFiles = "C:/Program Files";
+    return QDir::toNativeSeparators(programFiles + "/MyApp");
+#elif defined(Q_OS_LINUX)
+    return "/opt/MyApp";  // Or use home: QDir::homePath() + "/MyApp"
+#else
+    return QDir::homePath() + "/MyApp";
+#endif
+}
 
 void MainWindow::closeEvent(QCloseEvent* event) {
     if (m_extractionFuture.isRunning()) {
@@ -399,6 +413,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->startButton, &QPushButton::clicked, this, &MainWindow::onStartClicked);
     connect(ui->resumeButton, &QPushButton::clicked, this, &MainWindow::onPauseClicked);
     connect(ui->cancelButton, &QPushButton::clicked, this, &MainWindow::onCancelClicked);
+    connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
 
     ui->backButton->setText("Exit");
     quitApp = true;
@@ -409,7 +424,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     ui->startButton->hide();
 
-    ui->txtInstallationPath->setText("C:\\Plancksoft\\ScrutaNet\\");
+    QString installPath = getDefaultInstallPath();
+    QDir dir(installPath);
+    if (!dir.exists()) {
+        dir.mkpath(".");
+    }
+    qDebug() << "Installing to:" << installPath;
+    ui->txtInstallationPath->setText(installPath);
 }
 
 void MainWindow::onPauseClicked() {
@@ -438,6 +459,19 @@ void MainWindow::onCancelClicked() {
     ui->progressBarDownload->setValue(0);
 
     QApplication::quit();
+}
+
+void MainWindow::onBrowseClicked() {
+    QString dir = QFileDialog::getExistingDirectory(
+        this,
+        "Select Installation Folder",
+        ui->txtInstallationPath->toPlainText().isEmpty() ? QDir::homePath() : ui->txtInstallationPath->toPlainText(),
+        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+        );
+
+    if (!dir.isEmpty()) {
+        ui->txtInstallationPath->setText(dir);
+    }
 }
 
 MainWindow::~MainWindow() {

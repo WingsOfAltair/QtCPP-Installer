@@ -73,7 +73,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
           <rect>
            <x>10</x>
            <y>100</y>
-           <width>721</width>
+           <width>691</width>
            <height>31</height>
           </rect>
          </property>
@@ -89,6 +89,19 @@ li.checked::marker { content: &quot;\2612&quot;; }
          </property>
          <property name="text">
           <string>Please choose the installation path:</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="browseButton">
+         <property name="geometry">
+          <rect>
+           <x>710</x>
+           <y>93</y>
+           <width>75</width>
+           <height>41</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Browse</string>
          </property>
         </widget>
        </widget>

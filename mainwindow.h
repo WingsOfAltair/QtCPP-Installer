@@ -32,6 +32,7 @@ private slots:
     QString extractEmbeddedDll();
     void cancelExtraction();
     void closeEvent(QCloseEvent* event);
+    void onBrowseClicked();
 
 private:
     Ui::MainWindow *ui;
