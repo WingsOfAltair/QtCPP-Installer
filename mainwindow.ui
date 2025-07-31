@@ -257,6 +257,32 @@ li.checked::marker { content: &quot;\2612&quot;; }
           <string/>
          </property>
         </widget>
+        <widget class="QPushButton" name="cancelInstallationButton">
+         <property name="geometry">
+          <rect>
+           <x>640</x>
+           <y>350</y>
+           <width>121</width>
+           <height>31</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Cancel Installation</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="resumeInstallationButton">
+         <property name="geometry">
+          <rect>
+           <x>520</x>
+           <y>350</y>
+           <width>121</width>
+           <height>31</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Pause Installation</string>
+         </property>
+        </widget>
        </widget>
        <widget class="QWidget" name="Finish">
         <attribute name="title">

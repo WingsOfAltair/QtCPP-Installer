@@ -30,9 +30,10 @@ private slots:
     void onPauseClicked();
     void onCancelClicked();
     QString extractEmbeddedDll();
-    void cancelExtraction();
     void closeEvent(QCloseEvent* event);
     void onBrowseClicked();
+    void onPauseExtraction();
+    void onCancelExtraction();
 
 private:
     Ui::MainWindow *ui;
@@ -42,6 +43,7 @@ private:
     DownloadManager *manager;
     QThread *workerThread;
     bool isPaused;
+    bool isPausedExtraction;
     QString getExeFolder();
 };
 #endif // MAINWINDOW_H

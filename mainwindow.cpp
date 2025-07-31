@@ -23,11 +23,15 @@ std::atomic<bool> m_cancelExtraction {false};
 QFuture<void> m_extractionFuture;
 qint64 totalFileSize;
 
+std::atomic<bool> m_pauseExtraction{false};
+std::mutex m_pauseMutex;
+std::condition_variable m_pauseCv;
+
 DownloadManager *manager;
 DownloadControlFlags *m_controlFlags;
 QThread *workerThread;
 
-QString url = "http://localhost/Data.bin";
+QString url = "http://192.168.1.29/Data.bin";
 QString file;
 QString fileNameStr = "/Data.bin";
 QString filePath = "Data.bin";
@@ -72,10 +76,6 @@ void MainWindow::closeEvent(QCloseEvent* event) {
 
 QString MainWindow::getExeFolder() {
     return QApplication::applicationDirPath();
-}
-
-void MainWindow::cancelExtraction() {
-    m_cancelExtraction.store(true, std::memory_order_relaxed);
 }
 
 QString MainWindow::extractEmbeddedDll() {
@@ -179,6 +179,11 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
                     ("7z.dll");
                     return false; // Stops extraction
                 }
+
+                std::unique_lock<std::mutex> lock(m_pauseMutex);
+                m_pauseCv.wait(lock, [this]() { return !m_pauseExtraction.load(); });
+                lock.unlock();
+
                 int percent = totalSize > 0 ? static_cast<int>((processedSize * 100) / totalSize) : 0;
 
                 // Calculate time remaining
@@ -214,13 +219,52 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
             }, Qt::QueuedConnection);
 
         } catch (const bit7z::BitException& e) {
-            qWarning() << "Extraction failed:" << QString::fromStdString(e.what());
+            QMetaObject::invokeMethod(this, [this]() {
+                if (m_cancelExtraction.load(std::memory_order_relaxed)) {
+                    ui->lblInstallationStatus->setText("Extraction Canceled.");
+                    ui->progressBar->setValue(0);
+                    ui->nextButton->setDisabled(true);
+                    ui->backButton->setDisabled(true);
+                    ui->cancelInstallationButton->setDisabled(true);
+                    ui->resumeInstallationButton->setDisabled(true);
+                    QApplication::quit();
+                } else {
+                    ui->lblInstallationStatus->setText("An error has occured during installation. Please run installer as Administrator.");
+                    ui->progressBar->setValue(0);
+                    ui->nextButton->setDisabled(true);
+                    ui->backButton->setDisabled(true);
+                    ui->cancelInstallationButton->setDisabled(true);
+                    ui->resumeInstallationButton->setDisabled(true);
+                    setWindowFlags(windowFlags() | Qt::WindowCloseButtonHint);
+                    show();
+                }
+            }, Qt::QueuedConnection);
         }
 
         //(archivePath);
         (dllPath);
     });
     m_extractionWatcher.setFuture(m_extractionFuture);
+}
+
+void MainWindow::onPauseExtraction() {
+    isPausedExtraction = !isPausedExtraction;
+    if (isPausedExtraction)
+    {
+        ui->resumeInstallationButton->setText("Resume Installation");
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+        m_pauseExtraction.store(true);
+        m_pauseCv.notify_one();
+    } else {
+        ui->resumeInstallationButton->setText("Pause Installation");
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+        m_pauseExtraction.store(false);
+        m_pauseCv.notify_one();
+    }
+}
+
+void MainWindow::onCancelExtraction() {
+    m_cancelExtraction.store(true);
 }
 
 void MainWindow::NextStep()
@@ -235,6 +279,7 @@ void MainWindow::NextStep()
         ui->nextButton->setDisabled(true);
         ui->backButton->setDisabled(true);
 
+        filePath = getExeFolder() + fileNameStr;
         if (QFile::exists(filePath)) {
             if (QFile::exists(file + ".meta")) {
                 this->onStartClicked();
@@ -414,6 +459,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->resumeButton, &QPushButton::clicked, this, &MainWindow::onPauseClicked);
     connect(ui->cancelButton, &QPushButton::clicked, this, &MainWindow::onCancelClicked);
     connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
+    connect(ui->resumeInstallationButton, &QPushButton::clicked, this, &MainWindow::onPauseExtraction);
+    connect(ui->cancelInstallationButton, &QPushButton::clicked, this, &MainWindow::onCancelExtraction);
 
     ui->backButton->setText("Exit");
     quitApp = true;
@@ -421,6 +468,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     isPaused = false;
     ui->resumeButton->setText("Pause Download");
+    isPausedExtraction = false;
+    m_pauseExtraction.store(false);
+    ui->resumeInstallationButton->setText("Pause Installation");
 
     ui->startButton->hide();
 
