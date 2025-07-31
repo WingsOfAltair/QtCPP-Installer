@@ -350,14 +350,14 @@ void MainWindow::onStartClicked() {
     });
 
     connect(manager, &DownloadManager::progress, this, [this](qint64 downloaded, qint64 total, double speed, int eta) {
-                int percent = (total > 0) ? static_cast<int>((downloaded * 100) / total) : 0;
-                ui->progressBarDownload->setValue(percent);
-                ui->sizeLabel->setText(QString("%1 / %2")
-                                           .arg(humanSize(downloaded))
-                                           .arg(humanSize(total)));
-                ui->speedLabel->setText(QString("Speed: %1 MB/s").arg(speed, 0, 'f', 2));
-                ui->etaLabel->setText(QString("ETA: %1 sec").arg(eta >= 0 ? eta : -1));
-            });
+        int percent = (total > 0) ? static_cast<int>((downloaded * 100) / total) : 0;
+        ui->progressBarDownload->setValue(percent);
+        ui->sizeLabel->setText(QString("%1 / %2")
+                                   .arg(humanSize(downloaded))
+                                   .arg(humanSize(total)));
+        ui->speedLabel->setText(QString("Speed: %1 MB/s").arg(speed, 0, 'f', 2));
+        ui->etaLabel->setText(QString("ETA: %1 sec").arg(eta >= 0 ? eta : -1));
+    });
 
     workerThread->start();
 }
@@ -396,6 +396,9 @@ MainWindow::MainWindow(QWidget *parent)
     quitApp = true;
     file = getExeFolder() + fileNameStr;
 
+    isPaused = false;
+    ui->resumeButton->setText("Pause Download");
+
     ui->startButton->hide();
 
     ui->txtInstallationPath->setText("C:\\Plancksoft\\ScrutaNet\\");
@@ -405,12 +408,12 @@ void MainWindow::onPauseClicked() {
     isPaused = !isPaused;
     if (isPaused) {
         if (m_controlFlags)
-            m_controlFlags->paused.store(false);
-        ui->resumeButton->setText("Pause Download");
-    } else {
-        if (m_controlFlags)
             m_controlFlags->paused.store(true);
         ui->resumeButton->setText("Resume Download");
+    } else {
+        if (m_controlFlags)
+            m_controlFlags->paused.store(false);
+        ui->resumeButton->setText("Pause Download");
     }
 }
 
