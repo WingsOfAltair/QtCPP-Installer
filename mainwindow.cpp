@@ -446,7 +446,9 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
 
-    setWindowFlags(windowFlags() & ~Qt::WindowCloseButtonHint);
+    this->setWindowFlags(windowFlags() & ~Qt::WindowCloseButtonHint);
+    this->setWindowFlags(windowFlags() & ~Qt::WindowMaximizeButtonHint);
+    this->setFixedSize(800, 658);
 
     DownloadControlFlags *m_controlFlags = nullptr;
     DownloadManager *manager = nullptr;
