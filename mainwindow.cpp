@@ -106,7 +106,7 @@ QString MainWindow::extractEmbeddedDll() {
         qWarning() << "DLL resource does not exist!";
         return QString();
     }
-#else
+#elif defined(Q_OS_LINUX)
     QString dllPath = getExeFolder() + "/lib7z.so";  // Adjust for your system
     QFile dll(":/dependencies/lib7z.so");
     if (!dll.exists()) {
@@ -396,7 +396,7 @@ void MainWindow::NextStep()
         else {
 #ifdef Q_OS_WIN
             QString exePath = QDir::cleanPath(ui->txtInstallationPath->toPlainText() + "/ScrutaNet-Server-GUI.exe");
-#else
+#elif defined(Q_OS_LINUX)
             QString exePath = QDir::cleanPath(ui->txtInstallationPath->toPlainText() + "/ScrutaNet-Server-GUI");
 #endif
 
