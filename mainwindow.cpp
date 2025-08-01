@@ -31,6 +31,15 @@ DownloadManager *manager;
 DownloadControlFlags *m_controlFlags;
 QThread *workerThread;
 
+QLabel *nextButtonLabel;
+QLabel *backButtonLabel;
+QLabel *browseButtonLabel;
+QLabel *startDownloadButtonLabel;
+QLabel *resumeDownloadButtonLabel;
+QLabel *cancelDownloadButtonLabel;
+QLabel *resumeInstallationButtonLabel;
+QLabel *cancelInstallationButtonLabel;
+
 QString url = "http://192.168.1.29/Data.bin";
 QString file;
 QString fileNameStr = "/Data.bin";
@@ -41,11 +50,11 @@ QString getDefaultInstallPath() {
     QString programFiles = qEnvironmentVariable("ProgramFiles");
     if (programFiles.isEmpty())
         programFiles = "C:/Program Files";
-    return QDir::toNativeSeparators(programFiles + "/MyApp");
+    return QDir::toNativeSeparators(programFiles + "/Plancksoft/ScrutaNet");
 #elif defined(Q_OS_LINUX)
-    return "/opt/MyApp";  // Or use home: QDir::homePath() + "/MyApp"
+    return "/Plancksoft/ScrutaNet";  // Or use home: QDir::homePath() + "/Plancksoft/ScrutaNet"
 #else
-    return QDir::homePath() + "/MyApp";
+    return QDir::homePath() + "/Plancksoft/ScrutaNet";
 #endif
 }
 
@@ -253,12 +262,12 @@ void MainWindow::onPauseExtraction() {
     isPausedExtraction = !isPausedExtraction;
     if (isPausedExtraction)
     {
-        ui->resumeInstallationButton->setText("Resume Installation");
+        resumeInstallationButtonLabel->setText("Resume Installation");
         std::lock_guard<std::mutex> lock(m_pauseMutex);
         m_pauseExtraction.store(true);
         m_pauseCv.notify_one();
     } else {
-        ui->resumeInstallationButton->setText("Pause Installation");
+        resumeInstallationButtonLabel->setText("Pause Installation");
         std::lock_guard<std::mutex> lock(m_pauseMutex);
         m_pauseExtraction.store(false);
         m_pauseCv.notify_one();
@@ -272,7 +281,9 @@ void MainWindow::onCancelExtraction() {
 void MainWindow::NextStep()
 {
     ui->tabWidget->setCurrentIndex(ui->tabWidget->currentIndex() + 1);
-    ui->backButton->setText("Back");
+
+    backButtonLabel->setText("Back");
+
     if (ui->tabWidget->currentIndex() != 4)
     {
         quitApp = false;
@@ -286,12 +297,46 @@ void MainWindow::NextStep()
             if (QFile::exists(file + ".meta")) {
                 this->onStartClicked();
             } else {
-                QMessageBox::StandardButton reply;
-                reply = QMessageBox::question(nullptr, "File Exists",
-                                              "The file already exists. Do you want to overwrite?",
-                                              QMessageBox::Yes | QMessageBox::No);
+                QMessageBox msgBox;
+                msgBox.setIcon(QMessageBox::Question);
+                msgBox.setWindowTitle("File Exists");
+                msgBox.setText("The file already exists. Do you want to overwrite?");
+
+                // Add standard Yes and No buttons
+                msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+
+                // Access and style buttons individually
+                QAbstractButton  *yesButton = msgBox.button(QMessageBox::Yes);
+                QAbstractButton  *noButton = msgBox.button(QMessageBox::No);
+
+                yesButton->setObjectName("yesBtn");
+                noButton->setObjectName("noBtn");
+
+                msgBox.setStyleSheet(
+                    "#yesBtn { "
+                    "   background-color: #0078D7; "   // Blue
+                    "   color: white; "
+                    "   border-radius: 6px; "
+                    "   padding: 8px 16px; "
+                    "   font-weight: bold; "
+                    "} "
+                    "#yesBtn:hover { background-color: #005A9E; } "  // Darker blue on hover
+
+                    "#noBtn { "
+                    "   background-color: #FF8C00; "   // Orange
+                    "   color: white; "
+                    "   border-radius: 6px; "
+                    "   padding: 8px 16px; "
+                    "   font-weight: bold; "
+                    "} "
+                    "#noBtn:hover { background-color: #E67300; } "   // Darker orange on hover
+                    );
+
+                // Execute the message box
+                int reply = msgBox.exec();
+
                 if (reply == QMessageBox::Yes) {
-                    QFile::remove(filePath); // Delete old file
+                    QFile::remove(filePath);
                     this->onStartClicked();
                 } else {
                     qDebug() << "User chose not to overwrite.";
@@ -311,11 +356,11 @@ void MainWindow::NextStep()
 
         QString parentPath = dir.absolutePath();  // This is the path without the last folder
         ui->lblInstallationStatus->setText("Installing...");
-        extractResourceArchive(":/data/Data.bin", parentPath, "bashar");
+        extractResourceArchive(":/data/Data.bin", parentPath, "ah*&62I(FFqwrhg12r089YFDW(213r");
     }
     if (ui->tabWidget->currentIndex() == 4 && !quitApp)
     {
-        ui->nextButton->setText("Finish");
+        nextButtonLabel->setText("Finish");
         ui->nextButton->setDisabled(false);
         ui->backButton->setDisabled(true);
         quitApp = true;
@@ -353,10 +398,11 @@ void MainWindow::BackStep()
     }
 
     if (ui->tabWidget->currentIndex() == 0) {
-        ui->backButton->setText("Exit");
+        backButtonLabel->setText("Exit");
+
         quitApp = true;
     } else {
-        ui->backButton->setText("Back");
+        backButtonLabel->setText("Back");
     }
 }
 
@@ -367,8 +413,43 @@ void MainWindow::onStartClicked() {
     }
 
     if (QFile::exists(file + ".meta")) {
-        QMessageBox::StandardButton ans = QMessageBox::question(this, "Resume?", "Resume previous download?");
-        if (ans == QMessageBox::No) {
+        QMessageBox msgBox;
+        msgBox.setIcon(QMessageBox::Question);
+        msgBox.setWindowTitle("Resume?");
+        msgBox.setText("Resume previous download?");
+
+        // Add standard Yes and No buttons
+        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+
+        // Access and style buttons individually
+        QAbstractButton  *yesButton = msgBox.button(QMessageBox::Yes);
+        QAbstractButton  *noButton = msgBox.button(QMessageBox::No);
+
+        yesButton->setObjectName("yesBtn");
+        noButton->setObjectName("noBtn");
+
+        msgBox.setStyleSheet(
+            "#yesBtn { "
+            "   background-color: #0078D7; "   // Blue
+            "   color: white; "
+            "   border-radius: 6px; "
+            "   padding: 8px 16px; "
+            "   font-weight: bold; "
+            "} "
+            "#yesBtn:hover { background-color: #005A9E; } "  // Darker blue on hover
+
+            "#noBtn { "
+            "   background-color: #FF8C00; "   // Orange
+            "   color: white; "
+            "   border-radius: 6px; "
+            "   padding: 8px 16px; "
+            "   font-weight: bold; "
+            "} "
+            "#noBtn:hover { background-color: #E67300; } "   // Darker orange on hover
+            );
+        int reply = msgBox.exec();
+
+        if (reply == QMessageBox::No) {
             if (QFile::exists(filePath)) {
                 QFile::remove(filePath);
             }
@@ -397,9 +478,9 @@ void MainWindow::onStartClicked() {
         ui->sizeLabel->setText("");
         ui->etaLabel->setText("Download Complete.");
         ui->speedLabel->setText("");
-        ui->startButton->setDisabled(true);
-        ui->resumeButton->setDisabled(true);
-        ui->cancelButton->setDisabled(true);
+        ui->startDownloadButton->setDisabled(true);
+        ui->resumeDownloadButton->setDisabled(true);
+        ui->cancelDownloadButton->setDisabled(true);
         ui->nextButton->setDisabled(false);
         workerThread->quit();
         workerThread->wait();
@@ -442,6 +523,14 @@ QString MainWindow::humanSize(qint64 bytes) {
     return QString("%1 %2").arg(size, 0, 'f', 2).arg(units[i]);
 }
 
+void MainWindow::loadStyleSheet(const QString &path) {
+    QFile file(path);
+    if (file.open(QFile::ReadOnly)) {
+        QString qss = QString::fromUtf8(file.readAll());
+        qApp->setStyleSheet(qss);
+    }
+}
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -449,6 +538,8 @@ MainWindow::MainWindow(QWidget *parent)
     this->setWindowFlags(windowFlags() & ~Qt::WindowCloseButtonHint);
     this->setWindowFlags(windowFlags() & ~Qt::WindowMaximizeButtonHint);
     this->setFixedSize(800, 658);
+
+    loadStyleSheet(":/themes/light.qss");
 
     DownloadControlFlags *m_controlFlags = nullptr;
     DownloadManager *manager = nullptr;
@@ -459,24 +550,23 @@ MainWindow::MainWindow(QWidget *parent)
     ui->progressBarDownload->setRange(0, 100);
     connect(ui->nextButton, &QPushButton::clicked, this, &MainWindow::NextStep);
     connect(ui->backButton, &QPushButton::clicked, this, &MainWindow::BackStep);
-    connect(ui->startButton, &QPushButton::clicked, this, &MainWindow::onStartClicked);
-    connect(ui->resumeButton, &QPushButton::clicked, this, &MainWindow::onPauseClicked);
-    connect(ui->cancelButton, &QPushButton::clicked, this, &MainWindow::onCancelClicked);
+    connect(ui->startDownloadButton, &QPushButton::clicked, this, &MainWindow::onStartClicked);
+    connect(ui->resumeDownloadButton, &QPushButton::clicked, this, &MainWindow::onPauseClicked);
+    connect(ui->cancelDownloadButton, &QPushButton::clicked, this, &MainWindow::onCancelClicked);
     connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
     connect(ui->resumeInstallationButton, &QPushButton::clicked, this, &MainWindow::onPauseExtraction);
     connect(ui->cancelInstallationButton, &QPushButton::clicked, this, &MainWindow::onCancelExtraction);
 
-    ui->backButton->setText("Exit");
     quitApp = true;
     file = getExeFolder() + fileNameStr;
 
     isPaused = false;
-    ui->resumeButton->setText("Pause Download");
+    ui->resumeDownloadButton->setText("Pause Download");
     isPausedExtraction = false;
     m_pauseExtraction.store(false);
     ui->resumeInstallationButton->setText("Pause Installation");
 
-    ui->startButton->hide();
+    ui->startDownloadButton->hide();
 
     QString installPath = getDefaultInstallPath();
     QDir dir(installPath);
@@ -485,6 +575,96 @@ MainWindow::MainWindow(QWidget *parent)
     }
     qDebug() << "Installing to:" << installPath;
     ui->txtInstallationPath->setText(installPath);
+
+    init_ui_assets();
+}
+
+void MainWindow::init_ui_assets() {
+    ui->nextButton->setIcon(QIcon(":/icons/Blue-Button.png"));
+    ui->nextButton->setIconSize(QSize(128, 48));
+    ui->nextButton->setFixedSize(128, 48);
+    ui->nextButton->setText("");
+
+    nextButtonLabel = new QLabel("Next", ui->nextButton);
+    nextButtonLabel->setAlignment(Qt::AlignCenter);
+    nextButtonLabel->setStyleSheet("color: white; background: transparent; font-weight: bold;");
+    nextButtonLabel->setGeometry(ui->nextButton->rect());
+
+    ui->backButton->setIcon(QIcon(":/icons/Orange-Button.png"));
+    ui->backButton->setIconSize(QSize(128, 48));
+    ui->backButton->setFixedSize(128, 48);
+    ui->backButton->setText("");
+
+    backButtonLabel = new QLabel("Exit", ui->backButton);
+    backButtonLabel->setAlignment(Qt::AlignCenter);
+    backButtonLabel->setStyleSheet("color: white; background: transparent; font-weight: bold;");
+    backButtonLabel->setGeometry(ui->backButton->rect());
+
+    ui->browseButton->setIcon(QIcon(":/icons/Blue-Button.png"));
+    ui->browseButton->setIconSize(QSize(128, 48));
+    ui->browseButton->setFixedSize(128, 48);
+    ui->browseButton->setText("");
+
+    browseButtonLabel = new QLabel("Browse", ui->browseButton);
+    browseButtonLabel->setAlignment(Qt::AlignCenter);
+    browseButtonLabel->setStyleSheet("color: white; background: transparent; font-weight: bold;");
+    browseButtonLabel->setGeometry(ui->browseButton->rect());
+
+    ui->startDownloadButton->setIcon(QIcon(":/icons/Blue-Button.png"));
+    ui->startDownloadButton->setIconSize(QSize(128, 48));
+    ui->startDownloadButton->setFixedSize(128, 48);
+    ui->startDownloadButton->setText("");
+
+    startDownloadButtonLabel = new QLabel("Start Download", ui->startDownloadButton);
+    startDownloadButtonLabel->setAlignment(Qt::AlignCenter);
+    startDownloadButtonLabel->setStyleSheet("color: white; background: transparent; font-weight: bold;");
+    startDownloadButtonLabel->setGeometry(ui->startDownloadButton->rect());
+
+    ui->resumeDownloadButton->setIcon(QIcon(":/icons/Blue-Button.png"));
+    ui->resumeDownloadButton->setIconSize(QSize(128, 48));
+    ui->resumeDownloadButton->setFixedSize(128, 48);
+    ui->resumeDownloadButton->setText("");
+
+    resumeDownloadButtonLabel = new QLabel("Pause Download", ui->resumeDownloadButton);
+    resumeDownloadButtonLabel->setAlignment(Qt::AlignCenter);
+    resumeDownloadButtonLabel->setStyleSheet("color: white; background: transparent; font-weight: bold;");
+    resumeDownloadButtonLabel->setGeometry(ui->resumeDownloadButton->rect());
+
+    ui->cancelDownloadButton->setIcon(QIcon(":/icons/Orange-Button.png"));
+    ui->cancelDownloadButton->setIconSize(QSize(128, 48));
+    ui->cancelDownloadButton->setFixedSize(128, 48);
+    ui->cancelDownloadButton->setText("");
+
+    cancelDownloadButtonLabel = new QLabel("Cancel Download", ui->cancelDownloadButton);
+    cancelDownloadButtonLabel->setAlignment(Qt::AlignCenter);
+    cancelDownloadButtonLabel->setStyleSheet("color: white; background: transparent; font-weight: bold;");
+    cancelDownloadButtonLabel->setGeometry(ui->cancelDownloadButton->rect());
+
+    ui->resumeInstallationButton->setIcon(QIcon(":/icons/Blue-Button.png"));
+    ui->resumeInstallationButton->setIconSize(QSize(128, 48));
+    ui->resumeInstallationButton->setFixedSize(128, 48);
+    ui->resumeInstallationButton->setText("");
+
+    resumeInstallationButtonLabel = new QLabel("Pause Download", ui->resumeInstallationButton);
+    resumeInstallationButtonLabel->setAlignment(Qt::AlignCenter);
+    resumeInstallationButtonLabel->setStyleSheet("color: white; background: transparent; font-weight: bold;");
+    resumeInstallationButtonLabel->setGeometry(ui->resumeInstallationButton->rect());
+
+    ui->cancelInstallationButton->setIcon(QIcon(":/icons/Orange-Button.png"));
+    ui->cancelInstallationButton->setIconSize(QSize(128, 48));
+    ui->cancelInstallationButton->setFixedSize(128, 48);
+    ui->cancelInstallationButton->setText("");
+
+    cancelInstallationButtonLabel = new QLabel("Cancel Installation", ui->cancelInstallationButton);
+    cancelInstallationButtonLabel->setAlignment(Qt::AlignCenter);
+    cancelInstallationButtonLabel->setStyleSheet("color: white; background: transparent; font-weight: bold;");
+    cancelInstallationButtonLabel->setGeometry(ui->cancelInstallationButton->rect());
+
+    ui->imgScrutaNetDownload->setPixmap(QPixmap(":/icons/ScrutaNet.png"));
+    ui->imgScrutaNetDownload->setScaledContents(true);
+
+    ui->imgScrutaNetInstall->setPixmap(QPixmap(":/icons/ScrutaNet.png"));
+    ui->imgScrutaNetInstall->setScaledContents(true);
 }
 
 void MainWindow::onPauseClicked() {
@@ -492,11 +672,11 @@ void MainWindow::onPauseClicked() {
     if (isPaused) {
         if (m_controlFlags)
             m_controlFlags->paused.store(true);
-        ui->resumeButton->setText("Resume Download");
+        resumeDownloadButtonLabel->setText("Resume Download");
     } else {
         if (m_controlFlags)
             m_controlFlags->paused.store(false);
-        ui->resumeButton->setText("Pause Download");
+        resumeDownloadButtonLabel->setText("Pause Download");
     }
 }
 
@@ -504,9 +684,9 @@ void MainWindow::onCancelClicked() {
     if (m_controlFlags)
         m_controlFlags->stopped.store(true);
 
-    ui->cancelButton->setDisabled(true);
-    ui->resumeButton->setText("Download Canceled");
-    ui->resumeButton->setDisabled(true);
+    ui->cancelDownloadButton->setDisabled(true);
+    ui->resumeDownloadButton->setText("Download Canceled");
+    ui->resumeDownloadButton->setDisabled(true);
     ui->etaLabel->setText("Download Canceled");
     ui->sizeLabel->clear();
     ui->speedLabel->clear();

@@ -6,4 +6,14 @@
         <file>dependencies/libcurl-x64.dll</file>
         <file>dependencies/zlib1.dll</file>
     </qresource>
+  <qresource prefix="">
+    <file>themes/dark.qss</file>
+    <file>themes/light.qss</file>
+  </qresource>
+  <qresource prefix="">
+    <file>icons/appicon.png</file>
+    <file>icons/ScrutaNet.png</file>
+    <file>icons/Orange-Button.png</file>
+    <file>icons/Blue-Button.png</file>
+  </qresource>
 </RCC>

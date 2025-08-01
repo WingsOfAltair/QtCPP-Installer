@@ -34,6 +34,8 @@ private slots:
     void onBrowseClicked();
     void onPauseExtraction();
     void onCancelExtraction();
+    void loadStyleSheet(const QString &path);
+    void init_ui_assets();
 
 private:
     Ui::MainWindow *ui;

@@ -79,7 +79,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
           <rect>
            <x>10</x>
            <y>100</y>
-           <width>691</width>
+           <width>641</width>
            <height>31</height>
           </rect>
          </property>
@@ -100,10 +100,10 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <widget class="QPushButton" name="browseButton">
          <property name="geometry">
           <rect>
-           <x>710</x>
-           <y>93</y>
-           <width>75</width>
-           <height>41</height>
+           <x>660</x>
+           <y>90</y>
+           <width>128</width>
+           <height>48</height>
           </rect>
          </property>
          <property name="text">
@@ -119,7 +119,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
          <property name="geometry">
           <rect>
            <x>10</x>
-           <y>220</y>
+           <y>390</y>
            <width>771</width>
            <height>23</height>
           </rect>
@@ -128,39 +128,39 @@ li.checked::marker { content: &quot;\2612&quot;; }
           <number>0</number>
          </property>
         </widget>
-        <widget class="QPushButton" name="startButton">
+        <widget class="QPushButton" name="startDownloadButton">
          <property name="geometry">
           <rect>
            <x>390</x>
-           <y>350</y>
-           <width>121</width>
-           <height>31</height>
+           <y>500</y>
+           <width>128</width>
+           <height>48</height>
           </rect>
          </property>
          <property name="text">
           <string>Start Download</string>
          </property>
         </widget>
-        <widget class="QPushButton" name="resumeButton">
+        <widget class="QPushButton" name="resumeDownloadButton">
          <property name="geometry">
           <rect>
            <x>520</x>
-           <y>350</y>
-           <width>121</width>
-           <height>31</height>
+           <y>500</y>
+           <width>128</width>
+           <height>48</height>
           </rect>
          </property>
          <property name="text">
           <string>Pause Download</string>
          </property>
         </widget>
-        <widget class="QPushButton" name="cancelButton">
+        <widget class="QPushButton" name="cancelDownloadButton">
          <property name="geometry">
           <rect>
-           <x>640</x>
-           <y>350</y>
-           <width>121</width>
-           <height>31</height>
+           <x>650</x>
+           <y>500</y>
+           <width>128</width>
+           <height>48</height>
           </rect>
          </property>
          <property name="text">
@@ -171,7 +171,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
          <property name="geometry">
           <rect>
            <x>10</x>
-           <y>130</y>
+           <y>300</y>
            <width>771</width>
            <height>31</height>
           </rect>
@@ -184,7 +184,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
          <property name="geometry">
           <rect>
            <x>10</x>
-           <y>290</y>
+           <y>460</y>
            <width>771</width>
            <height>31</height>
           </rect>
@@ -197,7 +197,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
          <property name="geometry">
           <rect>
            <x>10</x>
-           <y>250</y>
+           <y>420</y>
            <width>771</width>
            <height>31</height>
           </rect>
@@ -210,9 +210,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
          <property name="geometry">
           <rect>
            <x>10</x>
-           <y>170</y>
+           <y>340</y>
            <width>781</width>
            <height>31</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+        <widget class="QLabel" name="imgScrutaNetDownload">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>751</width>
+           <height>321</height>
           </rect>
          </property>
          <property name="text">
@@ -228,7 +241,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
          <property name="geometry">
           <rect>
            <x>10</x>
-           <y>220</y>
+           <y>390</y>
            <width>771</width>
            <height>23</height>
           </rect>
@@ -241,7 +254,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
          <property name="geometry">
           <rect>
            <x>10</x>
-           <y>250</y>
+           <y>420</y>
            <width>771</width>
            <height>20</height>
           </rect>
@@ -254,7 +267,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
          <property name="geometry">
           <rect>
            <x>10</x>
-           <y>190</y>
+           <y>360</y>
            <width>731</width>
            <height>16</height>
           </rect>
@@ -266,10 +279,10 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <widget class="QPushButton" name="cancelInstallationButton">
          <property name="geometry">
           <rect>
-           <x>640</x>
-           <y>350</y>
-           <width>121</width>
-           <height>31</height>
+           <x>650</x>
+           <y>500</y>
+           <width>128</width>
+           <height>48</height>
           </rect>
          </property>
          <property name="text">
@@ -280,13 +293,26 @@ li.checked::marker { content: &quot;\2612&quot;; }
          <property name="geometry">
           <rect>
            <x>520</x>
-           <y>350</y>
-           <width>121</width>
-           <height>31</height>
+           <y>500</y>
+           <width>128</width>
+           <height>48</height>
           </rect>
          </property>
          <property name="text">
           <string>Pause Installation</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="imgScrutaNetInstall">
+         <property name="geometry">
+          <rect>
+           <x>20</x>
+           <y>30</y>
+           <width>751</width>
+           <height>321</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string/>
          </property>
         </widget>
        </widget>
@@ -340,10 +366,10 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <widget class="QPushButton" name="nextButton">
     <property name="geometry">
      <rect>
-      <x>720</x>
+      <x>650</x>
       <y>590</y>
-      <width>75</width>
-      <height>24</height>
+      <width>128</width>
+      <height>48</height>
      </rect>
     </property>
     <property name="text">
@@ -353,10 +379,10 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <widget class="QPushButton" name="backButton">
     <property name="geometry">
      <rect>
-      <x>640</x>
+      <x>510</x>
       <y>590</y>
-      <width>75</width>
-      <height>24</height>
+      <width>128</width>
+      <height>48</height>
      </rect>
     </property>
     <property name="text">
