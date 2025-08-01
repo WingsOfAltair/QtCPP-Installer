@@ -109,6 +109,14 @@ if(UNIX)
     target_link_libraries(QtCPP-Installer PRIVATE Threads::Threads)
 endif()
 
+if(WIN32)
+    set(APP_ICON_RESOURCE "${CMAKE_CURRENT_SOURCE_DIR}/resources/app_icon.rc")
+    target_sources(QtCPP-Installer PRIVATE ${APP_ICON_RESOURCE})
+endif()
+
+set(EXECUTABLE_NAME "ScrutaNet-Server-GUI")          # your executable target name
+set(INSTALL_ICON_NAME "${APP_ICON_SOURCE}")
+
 # Output directory (Qt Creator uses this for Debug/Release)
 set(OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 

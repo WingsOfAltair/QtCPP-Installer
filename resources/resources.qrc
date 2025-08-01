@@ -2,9 +2,6 @@
     <qresource prefix="/">
         <file>data/Data.bin</file>
         <file>dependencies/7z.dll</file>
-        <file>dependencies/libcurl.dll</file>
-        <file>dependencies/libcurl-x64.dll</file>
-        <file>dependencies/zlib1.dll</file>
     </qresource>
   <qresource prefix="">
     <file>themes/dark.qss</file>
