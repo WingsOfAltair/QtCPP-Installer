@@ -523,6 +523,11 @@ void MainWindow::onStartClicked() {
         delete m_controlFlags;
 
     m_controlFlags = new DownloadControlFlags();
+#ifdef Q_OS_WIN
+    url = "http://192.168.1.29/Data_WINDOWS.bin";
+#elif defined(Q_OS_LINUX)
+    url = "http://192.168.1.29/Data_LINUX.bin";
+#endif
     manager = new DownloadManager(url, file, m_controlFlags);
 
     workerThread = new QThread;
