@@ -2,7 +2,7 @@
     <qresource prefix="/">
         <file>data/Data.bin</file>
         <file>dependencies/7z.dll</file>
-        <file>dependencies/lib7z.so</file>
+        <file>dependencies/7z.so</file>
     </qresource>
   <qresource prefix="">
     <file>themes/dark.qss</file>

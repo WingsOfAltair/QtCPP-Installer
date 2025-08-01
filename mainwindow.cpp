@@ -107,7 +107,7 @@ QString MainWindow::extractEmbeddedDll() {
         return QString();
     }
 #elif defined(Q_OS_LINUX)
-    QString dllPath = getExeFolder() + "/lib7z.so";  // Adjust for your system
+    QString dllPath = getExeFolder() + "/7z.so";  // Adjust for your system
     QFile dll(":/dependencies/lib7z.so");
     if (!dll.exists()) {
         qWarning() << "DLL resource does not exist!";
