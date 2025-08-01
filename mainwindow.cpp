@@ -289,11 +289,13 @@ void MainWindow::onPauseExtraction() {
     isPausedExtraction = !isPausedExtraction;
     if (isPausedExtraction)
     {
+        ui->resumeInstallationButton->setIcon(QIcon(":/icons/Blue-Button.png"));
         resumeInstallationButtonLabel->setText("Resume Installation");
         std::lock_guard<std::mutex> lock(m_pauseMutex);
         m_pauseExtraction.store(true);
         m_pauseCv.notify_one();
     } else {
+        ui->resumeInstallationButton->setIcon(QIcon(":/icons/Orange-Button.png"));
         resumeInstallationButtonLabel->setText("Pause Installation");
         std::lock_guard<std::mutex> lock(m_pauseMutex);
         m_pauseExtraction.store(false);
@@ -628,10 +630,8 @@ MainWindow::MainWindow(QWidget *parent)
     file = getExeFolder() + fileNameStr;
 
     isPaused = false;
-    ui->resumeDownloadButton->setText("Pause Download");
     isPausedExtraction = false;
     m_pauseExtraction.store(false);
-    ui->resumeInstallationButton->setText("Pause Installation");
 
     ui->startDownloadButton->hide();
 
@@ -687,7 +687,7 @@ void MainWindow::init_ui_assets() {
     startDownloadButtonLabel->setStyleSheet("color: white; background: transparent; font-weight: bold;");
     startDownloadButtonLabel->setGeometry(ui->startDownloadButton->rect());
 
-    ui->resumeDownloadButton->setIcon(QIcon(":/icons/Blue-Button.png"));
+    ui->resumeDownloadButton->setIcon(QIcon(":/icons/Orange-Button.png"));
     ui->resumeDownloadButton->setIconSize(QSize(128, 48));
     ui->resumeDownloadButton->setFixedSize(128, 48);
     ui->resumeDownloadButton->setText("");
@@ -697,7 +697,7 @@ void MainWindow::init_ui_assets() {
     resumeDownloadButtonLabel->setStyleSheet("color: white; background: transparent; font-weight: bold;");
     resumeDownloadButtonLabel->setGeometry(ui->resumeDownloadButton->rect());
 
-    ui->cancelDownloadButton->setIcon(QIcon(":/icons/Orange-Button.png"));
+    ui->cancelDownloadButton->setIcon(QIcon(":/icons/Blue-Button.png"));
     ui->cancelDownloadButton->setIconSize(QSize(128, 48));
     ui->cancelDownloadButton->setFixedSize(128, 48);
     ui->cancelDownloadButton->setText("");
@@ -707,7 +707,7 @@ void MainWindow::init_ui_assets() {
     cancelDownloadButtonLabel->setStyleSheet("color: white; background: transparent; font-weight: bold;");
     cancelDownloadButtonLabel->setGeometry(ui->cancelDownloadButton->rect());
 
-    ui->resumeInstallationButton->setIcon(QIcon(":/icons/Blue-Button.png"));
+    ui->resumeInstallationButton->setIcon(QIcon(":/icons/Orange-Button.png"));
     ui->resumeInstallationButton->setIconSize(QSize(128, 48));
     ui->resumeInstallationButton->setFixedSize(128, 48);
     ui->resumeInstallationButton->setText("");
@@ -739,10 +739,12 @@ void MainWindow::onPauseClicked() {
     if (isPaused) {
         if (m_controlFlags)
             m_controlFlags->paused.store(true);
+        ui->resumeDownloadButton->setIcon(QIcon(":/icons/Blue-Button.png"));
         resumeDownloadButtonLabel->setText("Resume Download");
     } else {
         if (m_controlFlags)
             m_controlFlags->paused.store(false);
+        ui->resumeDownloadButton->setIcon(QIcon(":/icons/Orange-Button.png"));
         resumeDownloadButtonLabel->setText("Pause Download");
     }
 }
