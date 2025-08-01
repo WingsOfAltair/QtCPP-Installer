@@ -198,12 +198,4 @@ if(WIN32)
                 $<TARGET_FILE_DIR:QtCPP-Installer>
         )
     endforeach()
-else()
-# Copy lib7z.so
-add_custom_command(TARGET QtCPP-Installer POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_SOURCE_DIR}/resources/dependencies/lib7z.so"
-        "$<TARGET_FILE_DIR:QtCPP-Installer>/lib7z.so"
-    COMMENT "Copying lib7z.so to build output folder"
-)
 endif()

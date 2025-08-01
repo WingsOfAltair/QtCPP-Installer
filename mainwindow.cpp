@@ -101,15 +101,20 @@ QString MainWindow::getExeFolder() {
 QString MainWindow::extractEmbeddedDll() {
 #ifdef Q_OS_WIN
     QString dllPath = getExeFolder() + "/7z.dll";
-#else
-    QString dllPath = getExeFolder() + "/lib7z.so";  // Adjust for your system
-#endif
-
     QFile dll(":/dependencies/7z.dll");
     if (!dll.exists()) {
         qWarning() << "DLL resource does not exist!";
         return QString();
     }
+#else
+    QString dllPath = getExeFolder() + "/lib7z.so";  // Adjust for your system
+    QFile dll(":/dependencies/lib7z.so");
+    if (!dll.exists()) {
+        qWarning() << "DLL resource does not exist!";
+        return QString();
+    }
+#endif
+
     if (!dll.open(QIODevice::ReadOnly)) {
         qWarning() << "Failed to open DLL resource!";
         return QString();
@@ -259,6 +264,11 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
                     ui->resumeInstallationButton->setDisabled(true);
                     setWindowFlags(windowFlags() | Qt::WindowCloseButtonHint);
                     show();
+                }
+            }, Qt::QueuedConnection);
+            QMetaObject::invokeMethod(this, [msg = QString::fromUtf8(e.what())]() {
+                if (!m_cancelExtraction.load(std::memory_order_relaxed)) {
+                    QMessageBox::critical(nullptr, "Error", msg);
                 }
             }, Qt::QueuedConnection);
         }
