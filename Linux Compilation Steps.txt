@@ -1,5 +1,6 @@
 sudo apt install qt6-base-dev libcurl4-openssl-dev cmake build-essential
 sudo apt install p7zip-full
+sudo apt-get install p7zip-full p7zip-rar
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j$(nproc)
