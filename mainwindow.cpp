@@ -539,7 +539,7 @@ MainWindow::MainWindow(QWidget *parent)
     this->setWindowFlags(windowFlags() & ~Qt::WindowMaximizeButtonHint);
     this->setFixedSize(800, 658);
 
-    loadStyleSheet(":/themes/light.qss");
+    loadStyleSheet(":/themes/dark.qss");
 
     DownloadControlFlags *m_controlFlags = nullptr;
     DownloadManager *manager = nullptr;
