@@ -102,7 +102,7 @@ QString MainWindow::extractEmbeddedDll() {
 #ifdef Q_OS_WIN
     QString dllPath = getExeFolder() + "/7z.dll";
 #else
-    QString dllPath = "/usr/lib/x86_64-linux-gnu/lib7z.so";  // Adjust for your system
+    QString dllPath = "/lib7z.so";  // Adjust for your system
 #endif
 
     QFile dll(":/dependencies/7z.dll");
