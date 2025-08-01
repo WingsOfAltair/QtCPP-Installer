@@ -36,6 +36,7 @@ private slots:
     void onCancelExtraction();
     void loadStyleSheet(const QString &path);
     void init_ui_assets();
+    void toggleTheme();
 
 private:
     Ui::MainWindow *ui;

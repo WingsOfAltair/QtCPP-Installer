@@ -1,4 +1,100 @@
+QWidget {
+    background-color: white;
+    color: black;
+    selection-background-color: #4caf50; /* highlight color */
+    selection-color: black;          /* optional: text color when selected */
+}
+
+QTextEdit {
+    border: 2px solid #b4b4b4;
+    border-radius: 6px;
+    padding: 4px;
+}
+
 QPushButton {
     text-align: center;
     border: none;
+    background-color: transparent;
+}
+
+QCheckBox {
+    spacing: 5px;
+    color: #000000;
+}
+
+QCheckBox:hover {
+    color: #ffcc99;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #d0a412;
+    border: 1px solid #888;
+}
+
+QCheckBox::indicator:checked:hover {
+    background-color: #d0a412;
+}
+
+QCheckBox::indicator:unchecked {
+    background-color: white;
+    border: 1px solid #888;
+}
+
+QCheckBox::indicator:unchecked:hover {
+    background-color: #d0a412;
+}
+
+QCheckBox::indicator:pressed {
+    background-color: orange;
+}
+
+QCheckBox:pressed {
+    color: orange;
+}
+
+QCheckBox#cbLaunch {
+    spacing: 5px;
+    color: #000000;
+}
+
+QCheckBox#cbLaunch:hover {
+    color: #5589cf;
+}
+
+QCheckBox#cbLaunch::indicator:checked {
+    background-color: #0f63d1;
+    border: 1px solid #888;
+}
+
+QCheckBox#cbLaunch::indicator:checked:hover {
+    background-color: #5589cf;
+}
+
+QCheckBox#cbLaunch::indicator:unchecked {
+    background-color: white;
+    border: 1px solid #888;
+}
+
+QCheckBox#cbLaunch::indicator:unchecked:hover {
+    background-color: #5589cf;
+}
+
+QCheckBox#cbLaunch::indicator:pressed {
+    background-color: #0f63d1;
+}
+
+QCheckBox#cbLaunch:pressed {
+    color: #0f63d1;
+}
+
+QProgressBar {
+    border: 1px solid #bbb;
+    border-radius: 6px;
+    background-color: #eee;
+    text-align: center;
+}
+
+QProgressBar::chunk {
+    background-color: #0458d6;
+    border-radius: 6px;
 }

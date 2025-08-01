@@ -5,31 +5,79 @@ QWidget {
     selection-color: black;             /* optional: text color when selected */
 }
 
-QCheckBox {
-    spacing: 5px;
-    color: #f0f0f0;
+QTextEdit {
+    border: 2px solid orange;
+    border-radius: 6px;
+    padding: 4px;
 }
 
-QCheckBox:hover {
+QPushButton {
+    background-color: #transparent;
+    border: 1px solid #transparent;
+    padding: 6px;
+    border-radius: 4px;
+}
+
+QCheckBox#cbDarkMode {
+    spacing: 5px;
     color: #ffcc99;
 }
 
+QCheckBox#cbDarkMode:hover {
+    color: #d0a412;
+}
+
+QCheckBox#cbDarkMode::indicator:checked {
+    background-color: #ff6600;
+    border: 1px solid #888;
+}
+
+QCheckBox#cbDarkMode::indicator:checked:hover {
+    background-color: #d0a412;
+}
+
+QCheckBox#cbDarkMode::indicator:unchecked {
+    background-color: #121212;
+    border: 1px solid #888;
+}
+
+QCheckBox#cbDarkMode::indicator:unchecked:hover {
+    background-color: #d0a412;
+}
+
+QCheckBox#cbDarkMode::indicator:pressed {
+    background-color: white;
+}
+
+QCheckBox#cbDarkMode:pressed {
+    color: white;
+}
+
+QCheckBox {
+    spacing: 5px;
+    color: #ffcc99;
+}
+
+QCheckBox:hover {
+    color: #d0a412;
+}
+
 QCheckBox::indicator:checked {
-    background-color: orange;
+    background-color: #ff6600;
     border: 1px solid #888;
 }
 
 QCheckBox::indicator:checked:hover {
-    background-color: #ff9933;
+    background-color: #d0a412;
 }
 
 QCheckBox::indicator:unchecked {
-    background-color: #1e1e1e;
+    background-color: white;
     border: 1px solid #888;
 }
 
 QCheckBox::indicator:unchecked:hover {
-    background-color: #333;
+    background-color: #d0a412;
 }
 
 QCheckBox::indicator:pressed {
@@ -37,5 +85,17 @@ QCheckBox::indicator:pressed {
 }
 
 QCheckBox:pressed {
-    color: orange;
+    color: #c9932e;
+}
+
+QProgressBar {
+    border: 1px solid #d0a412;
+    border-radius: 6px;
+    background-color: #121212;
+    text-align: center;
+}
+
+QProgressBar::chunk {
+    background-color: #ff6600;
+    border-radius: 6px;
 }

@@ -389,6 +389,19 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <string>Back</string>
     </property>
    </widget>
+   <widget class="QCheckBox" name="darkModeCB">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>600</y>
+      <width>271</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Dark Mode Theme</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">

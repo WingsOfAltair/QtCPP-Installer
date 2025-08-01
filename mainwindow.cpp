@@ -45,6 +45,8 @@ QString file;
 QString fileNameStr = "/Data.bin";
 QString filePath = "Data.bin";
 
+bool darkMode = false;
+
 QString getDefaultInstallPath() {
 #ifdef Q_OS_WIN
     QString programFiles = qEnvironmentVariable("ProgramFiles");
@@ -56,6 +58,15 @@ QString getDefaultInstallPath() {
 #else
     return QDir::homePath() + "/Plancksoft/ScrutaNet";
 #endif
+}
+
+void MainWindow::toggleTheme() {
+    darkMode = !darkMode;
+    if (darkMode) {
+        loadStyleSheet(":/themes/dark.qss");
+    } else {
+        loadStyleSheet(":/themes/light.qss");
+    }
 }
 
 void MainWindow::closeEvent(QCloseEvent* event) {
@@ -539,7 +550,7 @@ MainWindow::MainWindow(QWidget *parent)
     this->setWindowFlags(windowFlags() & ~Qt::WindowMaximizeButtonHint);
     this->setFixedSize(800, 658);
 
-    loadStyleSheet(":/themes/dark.qss");
+    loadStyleSheet(":/themes/light.qss");
 
     DownloadControlFlags *m_controlFlags = nullptr;
     DownloadManager *manager = nullptr;
@@ -556,6 +567,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->browseButton, &QPushButton::clicked, this, &MainWindow::onBrowseClicked);
     connect(ui->resumeInstallationButton, &QPushButton::clicked, this, &MainWindow::onPauseExtraction);
     connect(ui->cancelInstallationButton, &QPushButton::clicked, this, &MainWindow::onCancelExtraction);
+    connect(ui->darkModeCB, &QCheckBox::clicked, this, [=]() {
+        this->toggleTheme();
+    });
 
     quitApp = true;
     file = getExeFolder() + fileNameStr;
