@@ -406,19 +406,19 @@ void MainWindow::NextStep()
             QFile file(exePath);
             if (file.exists()) {
                 bool started = QProcess::startDetached(exePath, {}, ui->txtInstallationPath->toPlainText());
-
                 if (!started) {
                     qDebug() << "Failed to start:" << exePath;
                 }
             } else {
                 qDebug() << "File does not exist:" << exePath;
             }
+
 #elif defined(Q_OS_LINUX)
             QString exePath = QDir::cleanPath(ui->txtInstallationPath->toPlainText() + "/ScrutaNet-Server-GUI");
 
             QFile file(exePath);
             if (file.exists()) {
-                // Set permissions rwxr-xr-x = owner: read/write/execute, group: read/execute, others: read/execute
+                // Set permissions rwxr-xr-x = 755
                 QFileDevice::Permissions perms = QFileDevice::ReadOwner
                                                  | QFileDevice::WriteOwner
                                                  | QFileDevice::ExeOwner
@@ -431,12 +431,12 @@ void MainWindow::NextStep()
                 if (!success) {
                     qDebug() << "Failed to set permissions on" << exePath;
                 } else {
-                    qDebug() << "Permissions set to 755 for" << exePath; {
-                    bool started = QProcess::startDetached(exePath, {}, ui->txtInstallationPath->toPlainText());
+                    qDebug() << "Permissions set to 755 for" << exePath;
+                }
 
-                    if (!started) {
-                        qDebug() << "Failed to start:" << exePath;
-                    }
+                bool started = QProcess::startDetached(exePath, {}, ui->txtInstallationPath->toPlainText());
+                if (!started) {
+                    qDebug() << "Failed to start:" << exePath;
                 }
 
             } else {
