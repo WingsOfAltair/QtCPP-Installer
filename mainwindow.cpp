@@ -713,7 +713,7 @@ void MainWindow::onBrowseClicked() {
     QString dir = QFileDialog::getExistingDirectory(
         this,
         "Select Installation Folder",
-        ui->txtInstallationPath->toPlainText().isEmpty() ? QDir::homePath() : ui->txtInstallationPath->toPlainText(),
+        ui->txtInstallationPath->toPlainText().isEmpty() ? QDir::homePath() : ui->txtInstallationPath->toPlainText() + QDir::separator() + "Plancksoft" + QDir::separator() + "ScrutaNet",
         QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
         );
 
