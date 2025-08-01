@@ -44,6 +44,7 @@ QString url = "http://192.168.1.29/Data.bin";
 QString file;
 QString fileNameStr = "/Data.bin";
 QString filePath = "Data.bin";
+QString dllPath;
 
 bool darkMode = false;
 
@@ -146,7 +147,7 @@ QString MainWindow::extractEmbeddedDll() {
 void MainWindow::extractResourceArchive(const QString& resourcePath, const QString& outputDir, const QString& password) {
     QString archivePath = getExeFolder() + "/Data.bin";
 
-    QString dllPath = extractEmbeddedDll();
+    dllPath = extractEmbeddedDll();
     if (dllPath.isEmpty()) {
         qCritical() << "Failed to extract 7z.dll";
         return;
@@ -243,6 +244,9 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
                 ui->labelTime->setText("Installation Completed.");
                 ui->cancelInstallationButton->setDisabled(true);
                 ui->resumeInstallationButton->setDisabled(true);
+                if (QFile::exists(dllPath)) {
+                    QFile::remove(dllPath);
+                }
             }, Qt::QueuedConnection);
 
         } catch (const bit7z::BitException& e) {
@@ -254,6 +258,9 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
                     ui->backButton->setDisabled(true);
                     ui->cancelInstallationButton->setDisabled(true);
                     ui->resumeInstallationButton->setDisabled(true);
+                    if (QFile::exists(filePath)) {
+                        QFile::remove(dllPath);
+                    }
                     QApplication::quit();
                 } else {
                     ui->lblInstallationStatus->setText("An error has occured during installation. Please run installer as Administrator.");
@@ -274,7 +281,6 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
         }
 
         //(archivePath);
-        (dllPath);
     });
     m_extractionWatcher.setFuture(m_extractionFuture);
 }
@@ -396,15 +402,47 @@ void MainWindow::NextStep()
         else {
 #ifdef Q_OS_WIN
             QString exePath = QDir::cleanPath(ui->txtInstallationPath->toPlainText() + "/ScrutaNet-Server-GUI.exe");
+
+            QFile file(exePath);
+            if (file.exists()) {
+                bool started = QProcess::startDetached(exePath, {}, ui->txtInstallationPath->toPlainText());
+
+                if (!started) {
+                    qDebug() << "Failed to start:" << exePath;
+                }
+            } else {
+                qDebug() << "File does not exist:" << exePath;
+            }
 #elif defined(Q_OS_LINUX)
             QString exePath = QDir::cleanPath(ui->txtInstallationPath->toPlainText() + "/ScrutaNet-Server-GUI");
-#endif
 
-            bool started = QProcess::startDetached(exePath, {}, ui->txtInstallationPath->toPlainText());
+            QFile file(exePath);
+            if (file.exists()) {
+                // Set permissions rwxr-xr-x = owner: read/write/execute, group: read/execute, others: read/execute
+                QFileDevice::Permissions perms = QFileDevice::ReadOwner
+                                                 | QFileDevice::WriteOwner
+                                                 | QFileDevice::ExeOwner
+                                                 | QFileDevice::ReadGroup
+                                                 | QFileDevice::ExeGroup
+                                                 | QFileDevice::ReadOther
+                                                 | QFileDevice::ExeOther;
 
-            if (!started) {
-                qDebug() << "Failed to start:" << exePath;
+                bool success = file.setPermissions(perms);
+                if (!success) {
+                    qDebug() << "Failed to set permissions on" << exePath;
+                } else {
+                    qDebug() << "Permissions set to 755 for" << exePath; {
+                    bool started = QProcess::startDetached(exePath, {}, ui->txtInstallationPath->toPlainText());
+
+                    if (!started) {
+                        qDebug() << "Failed to start:" << exePath;
+                    }
+                }
+
+            } else {
+                qDebug() << "File does not exist:" << exePath;
             }
+#endif
             QApplication::quit();
         }
     }
