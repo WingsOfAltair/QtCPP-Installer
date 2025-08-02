@@ -315,6 +315,32 @@ li.checked::marker { content: &quot;\2612&quot;; }
           <string/>
          </property>
         </widget>
+        <widget class="QCheckBox" name="cbShowInstallationDetails">
+         <property name="geometry">
+          <rect>
+           <x>10</x>
+           <y>520</y>
+           <width>271</width>
+           <height>20</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Show More Details</string>
+         </property>
+        </widget>
+        <widget class="QTextEdit" name="textEditInstallationLogs">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>10</y>
+           <width>791</width>
+           <height>371</height>
+          </rect>
+         </property>
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+        </widget>
        </widget>
        <widget class="QWidget" name="Finish">
         <attribute name="title">

@@ -34,9 +34,11 @@ private slots:
     void onBrowseClicked();
     void onPauseExtraction();
     void onCancelExtraction();
+    void onLogMessage(const QString &msg);
     void loadStyleSheet(const QString &path);
     void init_ui_assets();
     void toggleTheme();
+    void toggleInstallationDetails();
 
 private:
     Ui::MainWindow *ui;

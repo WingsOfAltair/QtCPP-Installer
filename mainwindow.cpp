@@ -18,7 +18,6 @@
 #include <bit7z/bitinputarchive.hpp>
 #include <iostream>
 
-bool quitApp = false;
 std::atomic<bool> m_cancelExtraction {false};
 QFuture<void> m_extractionFuture;
 qint64 totalFileSize;
@@ -46,7 +45,9 @@ QString fileNameStr = "/Data.bin";
 QString filePath = "Data.bin";
 QString dllPath;
 
+std::atomic<bool> quitApp{false};
 bool darkMode = false;
+bool showMoreDetails = false;
 
 QString getDefaultInstallPath() {
 #ifdef Q_OS_WIN
@@ -67,6 +68,17 @@ void MainWindow::toggleTheme() {
         loadStyleSheet(":/themes/dark.qss");
     } else {
         loadStyleSheet(":/themes/light.qss");
+    }
+}
+
+void MainWindow::toggleInstallationDetails() {
+    showMoreDetails = !showMoreDetails;
+    if (showMoreDetails) {
+        ui->textEditInstallationLogs->setVisible(true);
+        ui->imgScrutaNetInstall->setVisible(false);
+    } else {
+        ui->textEditInstallationLogs->setVisible(false);
+        ui->imgScrutaNetInstall->setVisible(true);
     }
 }
 
@@ -198,6 +210,31 @@ void MainWindow::extractResourceArchive(const QString& resourcePath, const QStri
             QElapsedTimer timer;
             timer.start();
 
+            size_t totalFiles = 0;
+            for (const auto& item : archive) {
+                if (!item.isDir()) {
+                    totalFiles++;
+                }
+            }
+
+            auto extractedFiles = std::make_shared<std::atomic<size_t>>(0);
+
+            // Show current file being extracted
+            extractor.setFileCallback([this, extractedFiles, totalFiles](bit7z::tstring filePath) {
+                extractedFiles->fetch_add(1);
+
+                QString fileName = QString::fromStdString(filePath);
+                QMetaObject::invokeMethod(this, [this, fileName, extractedFiles, totalFiles]() {
+
+                    onLogMessage(
+                        QString("%1 (%2 of %3)")
+                            .arg(fileName)
+                            .arg(extractedFiles->load())
+                            .arg(totalFiles)
+                        );
+                }, Qt::QueuedConnection);
+            });
+
             extractor.setProgressCallback([this, totalSize, timer](uint64_t processedSize) -> bool {
                 if (m_cancelExtraction.load(std::memory_order_relaxed)) {
                     qDebug() << "Extraction canceled by user.";
@@ -315,7 +352,7 @@ void MainWindow::NextStep()
 
     if (ui->tabWidget->currentIndex() != 4)
     {
-        quitApp = false;
+        quitApp.store(false);
     }
     if (ui->tabWidget->currentIndex() == 2) {
         ui->nextButton->setDisabled(true);
@@ -387,15 +424,15 @@ void MainWindow::NextStep()
         ui->lblInstallationStatus->setText("Installing...");
         extractResourceArchive(":/data/Data.bin", parentPath, "ah*&62I(FFqwrhg12r089YFDW(213r");
     }
-    if (ui->tabWidget->currentIndex() == 4 && !quitApp)
+    if (ui->tabWidget->currentIndex() == 4 && !quitApp.load())
     {
         nextButtonLabel->setText("Finish");
         ui->nextButton->setDisabled(false);
         ui->backButton->setDisabled(true);
-        quitApp = true;
+        quitApp.store(true);
         return;
     }
-    if (ui->tabWidget->currentIndex() == 4 && quitApp)
+    if (ui->tabWidget->currentIndex() == 4 && quitApp.load())
     {
         if (!ui->cbLaunch->isChecked())
         {
@@ -454,14 +491,14 @@ void MainWindow::BackStep()
 {
     ui->tabWidget->setCurrentIndex(ui->tabWidget->currentIndex() - 1);
 
-    if (ui->tabWidget->currentIndex() == 0 && quitApp) {
+    if (ui->tabWidget->currentIndex() == 0 && quitApp.load()) {
         QApplication::quit();
     }
 
     if (ui->tabWidget->currentIndex() == 0) {
         backButtonLabel->setText("Exit");
 
-        quitApp = true;
+        quitApp.store(true);
     } else {
         backButtonLabel->setText("Back");
     }
@@ -597,6 +634,13 @@ void MainWindow::loadStyleSheet(const QString &path) {
     }
 }
 
+void MainWindow::onLogMessage(const QString& msg) {
+    ui->textEditInstallationLogs->append("[Extracting]: " + msg);
+    QTextCursor c = ui->textEditInstallationLogs->textCursor();
+    c.movePosition(QTextCursor::End);
+    ui->textEditInstallationLogs->setTextCursor(c);
+}
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -625,8 +669,11 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->darkModeCB, &QCheckBox::clicked, this, [=]() {
         this->toggleTheme();
     });
+    connect(ui->cbShowInstallationDetails, &QCheckBox::clicked, this, [=]() {
+        this->toggleInstallationDetails();
+    });
 
-    quitApp = true;
+    quitApp.store(true);
     file = getExeFolder() + fileNameStr;
 
     isPaused = false;
@@ -644,6 +691,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->txtInstallationPath->setText(installPath);
 
     init_ui_assets();
+
+    ui->textEditInstallationLogs->setVisible(false);
+    ui->imgScrutaNetInstall->setVisible(true);
 }
 
 void MainWindow::init_ui_assets() {
